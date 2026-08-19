@@ -75,7 +75,7 @@
 - `backend/app/services/model_storage.py`: future model-storage protocol.
 - `backend/app/services/retraining.py`: future retraining protocol.
 - `backend/requirements.txt`: FastAPI runtime dependencies.
-- `backend/requirements-dev.txt`: HTTPX, Ruff, pytest, and coverage dependencies.
+- `backend/requirements-dev.txt`: HTTPX2, Ruff, pytest, and coverage dependencies.
 - `backend/pytest.ini`: backend test and coverage configuration.
 
 ---
@@ -1411,7 +1411,7 @@ Create `backend/requirements-dev.txt`:
 
 ```text
 -r requirements.txt
-httpx>=0.27,<1
+httpx2>=2.9,<3
 pytest>=8,<9
 pytest-cov>=5,<7
 ruff>=0.7,<1

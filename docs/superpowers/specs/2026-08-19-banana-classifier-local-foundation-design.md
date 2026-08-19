@@ -139,7 +139,7 @@ contain guidance but no generated notebook output.
 
 The backend also targets Python 3.11 in its own virtual environment. Its runtime
 dependencies will include FastAPI, Uvicorn, Pydantic, multipart support, and
-HTTPX-compatible test support. Ruff, pytest, and pytest-cov provide local checks.
+HTTPX2-compatible test support. Ruff, pytest, and pytest-cov provide local checks.
 
 The application will expose a real `/health` endpoint so developers can verify
 the service. Retraining and model-management router/service modules will be
