@@ -1,0 +1,40 @@
+# Flutter and Dart
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/*.iml
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+**/.coverage
+**/htmlcov/
+**/.venv/
+**/venv/
+
+# Dataset and generated model artifacts
+ml/data/*
+!ml/data/README.md
+*.h5
+*.keras
+*.tflite
+!app/assets/model/labels.example.txt
+!app/assets/model/README.md
+
+# Environment and secrets
+.env
+*.env
+
+# Local worktrees
+.worktrees/
+worktrees/
+.downloads/
+
+# IDE and operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
