@@ -1,30 +1,40 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:banana_classifier/main.dart';
+import 'package:banana_classifier/services/mock_inference_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:banana_classifier/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('starts with one clear scan action and visible history',
+      (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Banana Check'), findsOneWidget);
+    expect(find.text('Point at a banana and tap Scan.'), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
+    expect(find.text('History'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('scan action shows the deterministic development result',
+      (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.text('Scan'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Mock ready: Lakatan — Ripe'), findsOneWidget);
+  });
+
+  testWidgets('history remains one tap from the scan screen', (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
+
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your past scans will appear here.'), findsOneWidget);
   });
 }
