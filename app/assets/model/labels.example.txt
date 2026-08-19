@@ -1,0 +1,9 @@
+Lakatan|Unripe
+Lakatan|Ripe
+Lakatan|Overripe
+Saba|Unripe
+Saba|Ripe
+Saba|Overripe
+Cavendish|Unripe
+Cavendish|Ripe
+Cavendish|Overripe
