@@ -1,0 +1,59 @@
+name: Bug report
+description: Report reproducible incorrect behavior in the app or development tools.
+title: "bug: "
+labels:
+  - "type: bug"
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - App
+        - ML pipeline
+        - Backend
+        - Documentation or tooling
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the incorrect behavior in plain language.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open...
+        2. Tap or run...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include device/OS, Flutter or Python version, and relevant command output.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, logs, or failing test
+      description: Remove credentials, personal data, and raw dataset images before attaching evidence.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets and personal data from this report.
+          required: true

@@ -1,0 +1,54 @@
+name: Feature or task
+description: Propose planned product, documentation, or engineering work.
+title: "feat: "
+labels:
+  - "type: feature"
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - App
+        - ML pipeline
+        - Backend
+        - Documentation or tooling
+        - Shared contract
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: State what a user or developer will be able to do.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] Observable result one
+        - [ ] Relevant automated test
+        - [ ] Documentation or device check
+    validations:
+      required: true
+  - type: input
+    id: dependency
+    attributes:
+      label: Dependencies
+      description: Link blocking issues or write "None".
+  - type: textarea
+    id: notes
+    attributes:
+      label: Constraints and notes
+      description: Include relevant UI, offline, model-contract, or data-safety constraints.
+  - type: checkboxes
+    id: definition
+    attributes:
+      label: Definition of done
+      options:
+        - label: Tests will be included with behavior changes.
+          required: true
+        - label: No raw dataset or generated model artifact will be committed.
+          required: true

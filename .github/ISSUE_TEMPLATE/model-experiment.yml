@@ -1,0 +1,51 @@
+name: Model experiment
+description: Track a reproducible dataset, training, evaluation, or conversion experiment.
+title: "experiment: "
+labels:
+  - "type: experiment"
+  - "area: ml"
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What measurable change do you expect and why?
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Dataset and split
+      description: Reference provenance, class counts, split seed, and dataset version without uploading raw images.
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration
+      description: Record preprocessing, architecture, hyperparameters, seed, and environment.
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Required metrics
+      placeholder: Accuracy, per-class precision/recall, confusion matrix, size, and latency where applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Decision rule
+      description: Define what result would justify keeping or rejecting the experiment.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Artifact safety
+      options:
+        - label: Raw images, checkpoints, and generated model files will remain outside Git.
+          required: true
+        - label: Label order and preprocessing changes will be coordinated with the app contract.
+          required: true
