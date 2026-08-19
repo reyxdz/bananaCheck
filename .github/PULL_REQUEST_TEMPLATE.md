@@ -4,6 +4,10 @@
 
 ## Related issue
 
+<!-- Replace the placeholder below, for example: Closes #12. A PR merged
+into develop automatically closes each issue named with Closes, Fixes, or
+Resolves. Use one keyword and issue number per line. -->
+
 Closes #
 
 ## Type of change

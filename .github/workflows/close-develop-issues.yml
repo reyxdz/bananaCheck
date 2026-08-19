@@ -1,0 +1,33 @@
+name: Close develop issues
+
+on:
+  pull_request_target:
+    branches: [develop]
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  close-completed-issues:
+    name: close-completed-issues
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out trusted automation
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Test issue-closing automation
+        run: node --test .github/scripts/close-develop-issues.test.cjs
+      - name: Close completed issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { closeIssuesFromPullRequest } = require(
+              './.github/scripts/close-develop-issues.cjs'
+            );
+            await closeIssuesFromPullRequest({ github, context, core });
