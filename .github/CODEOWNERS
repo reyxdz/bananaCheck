@@ -1,6 +1,15 @@
 # Repository owner and governance reviewer.
 * @reyxdz
 
+# Delivery ownership.
+/app/ @emannnnn23
+/ml/ @userMarcPaul
+
+# The app/ML inference contract is reviewed jointly.
+/app/lib/models/classification_result.dart @emannnnn23 @userMarcPaul
+/app/lib/services/inference_service.dart @emannnnn23 @userMarcPaul
+
+# Governance remains with the project lead.
 /.github/ @reyxdz
 /docs/ @reyxdz
 /scripts/ @reyxdz
