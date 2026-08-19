@@ -18,7 +18,7 @@
 - Use Python 3.11.x for both Python projects and create separate `ml/.venv` and `backend/.venv` environments.
 - Keep all colors, spacing, radii, type sizes, and touch-target values in `app/lib/theme/design_tokens.dart`.
 - Use a minimum body size of 16sp, headers of at least 20sp, touch targets of at least 48dp, and a 64dp primary capture action token.
-- Do not create `.github/`, configure a remote, or add hosted repository configuration.
+- Configure only `https://github.com/reyxdz/bananaCheck.git` as `origin`; do not create `.github/` or add hosted repository configuration.
 - Do not add datasets, trained models, secrets, generated build output, or scheduled feature implementations.
 - Python test coverage must be at least 60 percent in both Python projects.
 - Use tests before implementation for domain behavior, widgets, validation, and endpoints.
@@ -1843,7 +1843,7 @@ Document:
 6. backend run command from root: `backend/.venv/bin/python -m uvicorn backend.app.main:app --reload` and its PowerShell equivalent;
 7. exact workspace ownership for `app/`, `ml/`, `backend/`, and `docs/`;
 8. a statement that mock inference is intentional until a validated TFLite model exists; and
-9. a statement that GitHub configuration is deferred.
+9. the configured `origin` URL and a statement that hosted GitHub configuration is deferred.
 
 - [ ] **Step 2: Write local contribution rules**
 
@@ -1908,4 +1908,4 @@ flutter doctor -v
 & py -3.11 --version
 ```
 
-Expected: logical task commits are visible, the worktree is clean, `git remote -v` prints nothing, Flutter is stable 3.x, Android development has no blocking doctor issue, and Python reports 3.11.x. Windows-only desktop warnings and the absence of Xcode on Windows are not blockers for this Android/iOS mobile scaffold.
+Expected: logical task commits are visible, the worktree is clean, `git remote -v` shows only `https://github.com/reyxdz/bananaCheck.git`, Flutter is stable 3.x, Android development has no blocking doctor issue, and Python reports 3.11.x. Windows-only desktop warnings and the absence of Xcode on Windows are not blockers for this Android/iOS mobile scaffold.

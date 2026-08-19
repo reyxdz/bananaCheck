@@ -38,8 +38,8 @@ contain:
 
 The foundation will not include:
 
-- GitHub remotes, Actions workflows, branch protection, issue templates, pull
-  request templates, collaborators, or other hosted configuration;
+- GitHub Actions workflows, branch protection, issue templates, pull request
+  templates, collaborators, or other hosted configuration;
 - camera capture, live preview, production navigation flows, scan history UI,
   database persistence, or finished results screens;
 - dataset collection, labeling, model training, evaluation, or a trained model;
@@ -234,10 +234,11 @@ out of scope.
 
 ## Local Git Boundary
 
-The directory will be initialized as a local Git repository on `main` and the
-approved design plus scaffold will be committed in logical steps. No remote is
-configured. This preserves a clean handoff while leaving repository hosting and
-GitHub policy for later.
+The directory is a Git repository on `main`, and the approved design plus
+scaffold will be committed in logical steps. The user-provided repository at
+`https://github.com/reyxdz/bananaCheck.git` is configured as `origin`. Direct
+setup work on `main` is explicitly authorized for this initial foundation;
+GitHub policy and hosted automation remain deferred.
 
 ## Acceptance Criteria
 
