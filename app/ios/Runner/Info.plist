@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Banana Check needs your camera to take photos of bananas and identify their variety and ripeness.</string>
 </dict>
 </plist>
