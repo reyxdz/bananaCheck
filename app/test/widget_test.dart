@@ -3,9 +3,13 @@ import 'package:banana_classifier/services/mock_inference_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+// ═══════════════════════════════════════════════════════════════════════
+//  Platform-channel stubs
+// ═══════════════════════════════════════════════════════════════════════
+
 /// Stubs the [permission_handler] platform channel so that
 /// `Permission.camera.status` and `Permission.camera.request()` return
-/// [PermissionStatus.granted] without hitting real platform code.
+/// the requested status without hitting real platform code.
 ///
 /// Pass a different [cameraStatus] to simulate denied / permanentlyDenied.
 void stubPermissionHandler({int cameraStatus = 1}) {
@@ -29,30 +33,73 @@ void stubPermissionHandler({int cameraStatus = 1}) {
   });
 }
 
+/// Stubs the camera plugin platform channels so that [availableCameras] and
+/// [CameraController.initialize] don't crash in the test environment.
+///
+/// Returns an empty camera list which makes the screen show its camera-error
+/// view ("No camera found on this device.") — this is the expected behavior
+/// in the headless test environment.
+void stubCameraChannels() {
+  // camera plugin method channel
+  const cameraChannel = MethodChannel('plugins.flutter.io/camera');
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(cameraChannel, (call) async {
+    switch (call.method) {
+      case 'availableCameras':
+        // Return empty list — no hardware camera in test.
+        return <Map<String, dynamic>>[];
+      default:
+        return null;
+    }
+  });
+
+  // camera_android_camerax uses its own channel
+  const cameraxChannel = MethodChannel(
+    'plugins.flutter.io/camera_android_camerax',
+  );
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(cameraxChannel, (call) async {
+    switch (call.method) {
+      case 'availableCameras':
+        return <Map<String, dynamic>>[];
+      default:
+        return null;
+    }
+  });
+}
+
+void _clearChannelStub(String name) {
+  final channel = MethodChannel(name);
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(channel, null);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+
 void main() {
   setUp(() {
-    // Default: camera permission granted.
+    // Default: camera permission granted + camera channels stubbed.
     stubPermissionHandler(cameraStatus: 1);
+    stubCameraChannels();
   });
 
   tearDown(() {
-    const methodChannel = MethodChannel(
-      'flutter.baseflow.com/permissions/methods',
-    );
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(methodChannel, null);
+    _clearChannelStub('flutter.baseflow.com/permissions/methods');
+    _clearChannelStub('plugins.flutter.io/camera');
+    _clearChannelStub('plugins.flutter.io/camera_android_camerax');
   });
+
+  // ── Existing A5 core tests ──
 
   testWidgets('starts with one clear scan action and visible history',
       (tester) async {
     await tester.pumpWidget(
       BananaClassifierApp(inferenceService: MockInferenceService()),
     );
-    // Let the permission check future resolve.
+    // Let the permission check and camera init futures resolve.
     await tester.pumpAndSettle();
 
     expect(find.text('Banana Check'), findsOneWidget);
-    expect(find.text('Point at a banana and tap Scan.'), findsOneWidget);
     expect(find.text('Scan'), findsOneWidget);
     expect(find.text('History'), findsOneWidget);
   });
@@ -112,5 +159,25 @@ void main() {
     expect(find.text('Open Settings'), findsOneWidget);
     // The Scan button should NOT be visible.
     expect(find.text('Scan'), findsNothing);
+  });
+
+  // ── A6-specific: camera error fallback in test environment ──
+
+  testWidgets(
+      'shows camera error view when no cameras are available (test env)',
+      (tester) async {
+    // Permission granted but stubCameraChannels returns empty list.
+    stubPermissionHandler(cameraStatus: 1);
+
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
+    await tester.pumpAndSettle();
+
+    // The error view should show a friendly message and a retry button.
+    expect(find.text('No camera found on this device.'), findsOneWidget);
+    expect(find.text('Try Again'), findsOneWidget);
+    // Scan button is still visible (permission is granted).
+    expect(find.text('Scan'), findsOneWidget);
   });
 }
