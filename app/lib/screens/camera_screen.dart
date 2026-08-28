@@ -291,13 +291,14 @@ class _LivePreview extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Camera feed — fill the available space while keeping the native
-          // aspect ratio (letterboxed with black bars via ColoredBox).
-          ColoredBox(
-            color: Colors.black,
-            child: Center(
-              child: AspectRatio(
-                aspectRatio: controller.value.aspectRatio,
+          // Camera feed — fill the entire container, cropping any overflow
+          // so there are no black bars.
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: controller.value.previewSize!.height,
+                height: controller.value.previewSize!.width,
                 child: CameraPreview(controller),
               ),
             ),
