@@ -1,7 +1,4 @@
-
-
 import 'package:flutter/material.dart';
-
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
 import 'services/inference_service.dart';
