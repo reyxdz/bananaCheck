@@ -172,8 +172,7 @@ void main() {
 
   // ── A7-specific: capture button tests ──
 
-  testWidgets(
-      'capture button is present but disabled when camera is not ready',
+  testWidgets('capture button is present but disabled when camera is not ready',
       (tester) async {
     // Permission granted, but no camera hardware → controller never
     // initialises → cameraReady is false → onPressed is null.

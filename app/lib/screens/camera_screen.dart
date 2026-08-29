@@ -193,9 +193,7 @@ class _CameraScreenState extends State<CameraScreen>
   /// No confirmation dialogs, no extra steps.
   Future<void> _capturePhoto() async {
     final controller = _cameraController;
-    if (controller == null ||
-        !controller.value.isInitialized ||
-        _isCapturing) {
+    if (controller == null || !controller.value.isInitialized || _isCapturing) {
       return;
     }
 
