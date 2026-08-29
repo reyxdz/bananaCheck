@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -31,7 +33,8 @@ class CameraScreen extends StatefulWidget {
     super.key,
   });
 
-  final VoidCallback onScan;
+  /// Called with the captured image file when the user taps Scan.
+  final ValueChanged<File> onScan;
   final VoidCallback onHistory;
 
   @override
@@ -50,6 +53,13 @@ class _CameraScreenState extends State<CameraScreen>
 
   /// Non-null when camera initialisation fails — shown as a friendly message.
   String? _cameraError;
+
+  // ─────────────────────── capture state ────────────────────────────────
+  /// `true` while a photo capture is in progress — prevents double-taps.
+  bool _isCapturing = false;
+
+  /// `true` briefly during the shutter flash animation.
+  bool _showShutterFlash = false;
 
   // ───────────────────────────── lifecycle ──────────────────────────────
 
@@ -175,6 +185,50 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
+  // ──────────────────────── capture logic ────────────────────────────────
+
+  /// Takes a picture and passes the captured file to [widget.onScan].
+  ///
+  /// Per §7.1: one tap → capture → result appears automatically.
+  /// No confirmation dialogs, no extra steps.
+  Future<void> _capturePhoto() async {
+    final controller = _cameraController;
+    if (controller == null ||
+        !controller.value.isInitialized ||
+        _isCapturing) {
+      return;
+    }
+
+    setState(() => _isCapturing = true);
+
+    try {
+      // Brief shutter flash for tactile feedback.
+      setState(() => _showShutterFlash = true);
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (mounted) setState(() => _showShutterFlash = false);
+
+      final xFile = await controller.takePicture();
+      final capturedFile = File(xFile.path);
+
+      if (!mounted) return;
+
+      // Hand off to the scan callback — result screen appears per §7.1.
+      widget.onScan(capturedFile);
+    } catch (e) {
+      if (!mounted) return;
+      // Plain-language error per §7.3.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not take the photo — please try again.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isCapturing = false);
+    }
+  }
+
   void _disposeCamera() {
     _cameraController?.dispose();
     _cameraController = null;
@@ -184,14 +238,23 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   Widget build(BuildContext context) {
+    final cameraReady = _permissionState == CameraPermissionState.granted &&
+        _cameraController != null &&
+        _cameraController!.value.isInitialized;
+
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(DesignTokens.spacingLarge),
-          child: Column(
-            children: [
-              // ── top bar (title + history) ──
-              Row(
+        child: Column(
+          children: [
+            // ── top bar (title + history) ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                DesignTokens.spacingLarge,
+                DesignTokens.spacingLarge,
+                DesignTokens.spacingLarge,
+                0,
+              ),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
@@ -205,26 +268,33 @@ class _CameraScreenState extends State<CameraScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: DesignTokens.spacingMedium),
+            ),
+            const SizedBox(height: DesignTokens.spacingMedium),
 
-              // ── main area — depends on permission state ──
-              Expanded(child: _buildBody()),
-
-              const SizedBox(height: DesignTokens.spacingLarge),
-
-              // ── scan button (only when camera is ready) ──
-              if (_permissionState == CameraPermissionState.granted)
-                SizedBox(
-                  width: double.infinity,
-                  height: DesignTokens.primaryActionSize,
-                  child: PrimaryButton(
-                    icon: Icons.camera_alt,
-                    label: 'Scan',
-                    onPressed: widget.onScan,
-                  ),
+            // ── main area — depends on permission state ──
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: DesignTokens.spacingLarge,
                 ),
-            ],
-          ),
+                child: _buildBody(),
+              ),
+            ),
+
+            const SizedBox(height: DesignTokens.spacingMedium),
+
+            // ── capture button — large, single primary action per §7.1/§7.4 ──
+            if (_permissionState == CameraPermissionState.granted)
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: DesignTokens.spacingLarge,
+                ),
+                child: _CaptureButton(
+                  onPressed: cameraReady ? _capturePhoto : null,
+                  isCapturing: _isCapturing,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -257,8 +327,11 @@ class _CameraScreenState extends State<CameraScreen>
       return const _CheckingIndicator();
     }
 
-    // Live preview with hint overlay.
-    return _LivePreview(controller: controller);
+    // Live preview with hint overlay + optional shutter flash.
+    return _LivePreview(
+      controller: controller,
+      showShutterFlash: _showShutterFlash,
+    );
   }
 }
 
@@ -278,11 +351,15 @@ class _CheckingIndicator extends StatelessWidget {
   }
 }
 
-/// Live camera preview with a translucent hint overlay.
+/// Live camera preview with a translucent hint overlay and shutter flash.
 class _LivePreview extends StatelessWidget {
-  const _LivePreview({required this.controller});
+  const _LivePreview({
+    required this.controller,
+    this.showShutterFlash = false,
+  });
 
   final CameraController controller;
+  final bool showShutterFlash;
 
   @override
   Widget build(BuildContext context) {
@@ -332,8 +409,109 @@ class _LivePreview extends StatelessWidget {
               ),
             ),
           ),
+
+          // Shutter flash — white overlay that appears briefly on capture.
+          if (showShutterFlash)
+            const Positioned.fill(
+              child: ColoredBox(color: Colors.white70),
+            ),
         ],
       ),
+    );
+  }
+}
+
+/// The large, circular capture button — the single primary action on the
+/// camera screen per §7.1.
+///
+/// Sizing: 72dp diameter (exceeds the 64dp minimum from §7.4), centred,
+/// high-contrast primary-green fill with a white camera icon + label.
+class _CaptureButton extends StatelessWidget {
+  const _CaptureButton({
+    required this.onPressed,
+    this.isCapturing = false,
+  });
+
+  final VoidCallback? onPressed;
+  final bool isCapturing;
+
+  /// Diameter of the outer ring — exceeds §7.4 minimum of 64dp.
+  static const double _outerSize = 80;
+
+  /// Diameter of the filled inner circle.
+  static const double _innerSize = 68;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Semantics(
+          button: true,
+          label: 'Scan',
+          child: GestureDetector(
+            onTap: onPressed,
+            child: SizedBox(
+              width: _outerSize,
+              height: _outerSize,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: DesignTokens.primary,
+                    width: 3,
+                  ),
+                ),
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 100),
+                    width: isCapturing ? _innerSize - 8 : _innerSize,
+                    height: isCapturing ? _innerSize - 8 : _innerSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isCapturing
+                          ? DesignTokens.primaryDark
+                          : DesignTokens.primary,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: DesignTokens.shadow,
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: isCapturing
+                        ? const Padding(
+                            padding: EdgeInsets.all(18),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: DesignTokens.iconMedium,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: DesignTokens.spacingSmall),
+        // Per §7.2: always pair icon with a plain-language label.
+        Text(
+          'Scan',
+          style: TextStyle(
+            fontSize: DesignTokens.bodyTextSize,
+            fontWeight: FontWeight.w700,
+            color: isCapturing
+                ? DesignTokens.textSecondary
+                : DesignTokens.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }

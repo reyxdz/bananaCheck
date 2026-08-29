@@ -1,4 +1,4 @@
-import 'dart:io';
+
 
 import 'package:flutter/material.dart';
 
@@ -36,8 +36,8 @@ class _HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CameraScreen(
-      onScan: () async {
-        final result = await inferenceService.classify(File('mock-scan.jpg'));
+      onScan: (capturedFile) async {
+        final result = await inferenceService.classify(capturedFile);
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

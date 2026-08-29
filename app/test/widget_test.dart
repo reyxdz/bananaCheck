@@ -1,5 +1,6 @@
 import 'package:banana_classifier/main.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -100,21 +101,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Banana Check'), findsOneWidget);
+    // The capture button shows the "Scan" label below the circular button.
     expect(find.text('Scan'), findsOneWidget);
     expect(find.text('History'), findsOneWidget);
-  });
-
-  testWidgets('scan action shows the deterministic development result',
-      (tester) async {
-    await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Scan'));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('Mock ready: Lakatan — Ripe'), findsOneWidget);
   });
 
   testWidgets('history remains one tap from the scan screen', (tester) async {
@@ -177,7 +166,69 @@ void main() {
     // The error view should show a friendly message and a retry button.
     expect(find.text('No camera found on this device.'), findsOneWidget);
     expect(find.text('Try Again'), findsOneWidget);
-    // Scan button is still visible (permission is granted).
+    // Capture button with "Scan" label is still visible (permission granted).
+    expect(find.text('Scan'), findsOneWidget);
+  });
+
+  // ── A7-specific: capture button tests ──
+
+  testWidgets(
+      'capture button is present but disabled when camera is not ready',
+      (tester) async {
+    // Permission granted, but no camera hardware → controller never
+    // initialises → cameraReady is false → onPressed is null.
+    stubPermissionHandler(cameraStatus: 1);
+
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
+    await tester.pumpAndSettle();
+
+    // Capture button is rendered (label visible).
+    expect(find.text('Scan'), findsOneWidget);
+
+    // The camera icon is present inside the circular button.
+    expect(find.byIcon(Icons.camera_alt), findsOneWidget);
+
+    // Tapping does nothing because the camera isn't ready — no snackbar,
+    // no navigation, no crash.
+    await tester.tap(find.text('Scan'));
+    await tester.pumpAndSettle();
+
+    // Still on the camera screen, no crash or navigation occurred.
+    expect(find.text('Banana Check'), findsOneWidget);
+    expect(find.text('No camera found on this device.'), findsOneWidget);
+  });
+
+  testWidgets('capture button is hidden when permission is not granted',
+      (tester) async {
+    stubPermissionHandler(cameraStatus: 0); // denied
+
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
+    await tester.pumpAndSettle();
+
+    // Capture button should not appear at all.
+    expect(find.text('Scan'), findsNothing);
+    expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
+    expect(find.text('Camera access needed'), findsOneWidget);
+  });
+
+  testWidgets(
+      'capture button pairs icon with label per §7.2 (no icon-only actions)',
+      (tester) async {
+    stubPermissionHandler(cameraStatus: 1);
+
+    await tester.pumpWidget(
+      BananaClassifierApp(inferenceService: MockInferenceService()),
+    );
+    await tester.pumpAndSettle();
+
+    // Per §7.2: "never icon-only for critical actions — always pair an icon
+    // with a short, plain-language label".
+    // Both the camera icon and the "Scan" text label must be present.
+    expect(find.byIcon(Icons.camera_alt), findsOneWidget);
     expect(find.text('Scan'), findsOneWidget);
   });
 }
