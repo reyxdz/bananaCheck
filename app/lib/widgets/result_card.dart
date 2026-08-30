@@ -57,8 +57,7 @@ class ResultCard extends StatelessWidget {
             // ── Image thumbnail (if available) ──
             if (imagePath != null) ...[
               ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(DesignTokens.radiusMedium),
+                borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 child: SizedBox(
                   width: double.infinity,
                   height: DesignTokens.imageThumbnailSize,

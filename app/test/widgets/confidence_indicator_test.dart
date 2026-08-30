@@ -22,8 +22,7 @@ void main() {
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
     });
 
-    testWidgets('shows "We\'re pretty sure" at exactly 0.85',
-        (tester) async {
+    testWidgets('shows "We\'re pretty sure" at exactly 0.85', (tester) async {
       await tester.pumpWidget(buildIndicator(0.85));
 
       expect(find.text("We're pretty sure"), findsOneWidget);
@@ -39,8 +38,7 @@ void main() {
       expect(find.byIcon(Icons.info), findsOneWidget);
     });
 
-    testWidgets('shows "This looks likely" at exactly 0.65',
-        (tester) async {
+    testWidgets('shows "This looks likely" at exactly 0.65', (tester) async {
       await tester.pumpWidget(buildIndicator(0.65));
 
       expect(find.text('This looks likely'), findsOneWidget);
@@ -48,8 +46,7 @@ void main() {
 
     // ── Low confidence (< 0.65) ──
 
-    testWidgets('shows actionable message for low confidence',
-        (tester) async {
+    testWidgets('shows actionable message for low confidence', (tester) async {
       await tester.pumpWidget(buildIndicator(0.42));
 
       expect(
@@ -59,8 +56,7 @@ void main() {
       expect(find.byIcon(Icons.help_outline), findsOneWidget);
     });
 
-    testWidgets('shows actionable message at exactly 0.64',
-        (tester) async {
+    testWidgets('shows actionable message at exactly 0.64', (tester) async {
       await tester.pumpWidget(buildIndicator(0.64));
 
       expect(

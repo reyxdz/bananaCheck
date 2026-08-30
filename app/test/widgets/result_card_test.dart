@@ -10,7 +10,8 @@ void main() {
       String? imagePath,
     }) {
       return MaterialApp(
-        home: Scaffold(body: SingleChildScrollView(
+        home: Scaffold(
+            body: SingleChildScrollView(
           child: ResultCard(result: result, imagePath: imagePath),
         )),
       );
@@ -51,8 +52,7 @@ void main() {
     ];
 
     for (final testCase in confidenceCases) {
-      testWidgets(
-          'uses plain language at confidence ${testCase.confidence}',
+      testWidgets('uses plain language at confidence ${testCase.confidence}',
           (tester) async {
         final result = ClassificationResult(
           variety: 'Lakatan',
@@ -106,8 +106,7 @@ void main() {
 
     // ── Image handling ──
 
-    testWidgets('renders without image when imagePath is null',
-        (tester) async {
+    testWidgets('renders without image when imagePath is null', (tester) async {
       final result = ClassificationResult(
         variety: 'Lakatan',
         ripeness: 'Ripe',

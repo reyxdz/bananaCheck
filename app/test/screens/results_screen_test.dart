@@ -74,8 +74,7 @@ void main() {
       expect(find.text('This looks likely'), findsOneWidget);
     });
 
-    testWidgets('shows actionable message for low confidence',
-        (tester) async {
+    testWidgets('shows actionable message for low confidence', (tester) async {
       await tester.pumpWidget(buildScreen(result: lowConfidenceResult));
 
       expect(find.text('Saba — Overripe'), findsOneWidget);
