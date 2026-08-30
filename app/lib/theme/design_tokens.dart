@@ -24,5 +24,9 @@ abstract final class DesignTokens {
   static const double iconMedium = 28;
   static const double iconLarge = 48;
   static const double bodyTextSize = 16;
+  static const double subheadingTextSize = 18;
   static const double headingTextSize = 24;
+  static const double resultHeadlineSize = 28;
+  static const double imageThumbnailSize = 200;
+  static const double radiusLarge = 20;
 }

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
+import 'screens/results_screen.dart';
 import 'services/inference_service.dart';
 import 'services/mock_inference_service.dart';
 import 'theme/app_theme.dart';
@@ -33,18 +36,7 @@ class _HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CameraScreen(
-      onScan: (capturedFile) async {
-        final result = await inferenceService.classify(capturedFile);
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Mock ready: ${result.variety} — ${result.ripeness}. '
-              'Camera capture is ready for feature development.',
-            ),
-          ),
-        );
-      },
+      onScan: (capturedFile) => _handleScan(context, capturedFile),
       onHistory: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -52,6 +44,21 @@ class _HomeScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _handleScan(BuildContext context, File capturedFile) async {
+    final result = await inferenceService.classify(capturedFile);
+    if (!context.mounted) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ResultsScreen(
+          result: result,
+          imagePath: capturedFile.path,
+          onScanAgain: () => Navigator.of(context).pop(),
+        ),
+      ),
     );
   }
 }
