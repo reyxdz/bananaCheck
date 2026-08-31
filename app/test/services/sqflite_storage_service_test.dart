@@ -1,12 +1,11 @@
 import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/services/storage_service.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
-//  Serialisation round-trip tests (no platform channels required)
+//  Serialisation round-trip tests (no database required)
 // ═══════════════════════════════════════════════════════════════════════
 
 void main() {
@@ -82,45 +81,39 @@ void main() {
   // ═══════════════════════════════════════════════════════════════════════
   //  SqfliteStorageService integration tests
   //
-  //  Uses sqflite's in-memory database via `databaseFactory` to avoid
-  //  hitting the real filesystem in CI / headless tests.
+  //  Uses sqflite_common_ffi for an in-memory database that works in
+  //  headless CI / test environments without platform channels.
   // ═══════════════════════════════════════════════════════════════════════
 
   group('SqfliteStorageService', () {
     late StorageService storage;
     late Database db;
 
+    setUpAll(() {
+      // Initialise the FFI-based database factory once for all tests.
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    });
+
     setUp(() async {
-      TestWidgetsFlutterBinding.ensureInitialized();
-
-      // Stub path_provider so getApplicationDocumentsDirectory works.
-      const pathChannel = MethodChannel(
-        'plugins.flutter.io/path_provider',
-      );
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(pathChannel, (call) async {
-        if (call.method == 'getApplicationDocumentsDirectory') {
-          return '.'; // current directory — test-only
-        }
-        return null;
-      });
-
-      // Use an in-memory database instead of a real file.
-      db = await openDatabase(
+      // Each test gets a fresh in-memory database.
+      db = await databaseFactoryFfi.openDatabase(
         inMemoryDatabasePath,
-        version: 1,
-        onCreate: (db, version) async {
-          await db.execute('''
-            CREATE TABLE scans (
-              id          TEXT PRIMARY KEY,
-              image_path  TEXT NOT NULL,
-              variety     TEXT NOT NULL,
-              ripeness    TEXT NOT NULL,
-              confidence  REAL NOT NULL,
-              scanned_at  INTEGER NOT NULL
-            )
-          ''');
-        },
+        options: OpenDatabaseOptions(
+          version: 1,
+          onCreate: (db, version) async {
+            await db.execute('''
+              CREATE TABLE scans (
+                id          TEXT PRIMARY KEY,
+                image_path  TEXT NOT NULL,
+                variety     TEXT NOT NULL,
+                ripeness    TEXT NOT NULL,
+                confidence  REAL NOT NULL,
+                scanned_at  INTEGER NOT NULL
+              )
+            ''');
+          },
+        ),
       );
 
       storage = _InMemoryStorageService(db);
