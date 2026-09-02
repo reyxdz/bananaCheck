@@ -1,8 +1,40 @@
 import 'package:banana_classifier/main.dart';
+import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
+import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+// ═══════════════════════════════════════════════════════════════════════
+//  In-memory StorageService for tests
+// ═══════════════════════════════════════════════════════════════════════
+
+/// A trivial in-memory [StorageService] that avoids any platform-channel
+/// or file-system dependency, suitable for widget tests.
+class FakeStorageService implements StorageService {
+  final List<ScanRecord> _records = [];
+
+  @override
+  Future<List<ScanRecord>> getRecords() async =>
+      List.unmodifiable(_records.reversed);
+
+  @override
+  Future<void> saveRecord(ScanRecord record) async {
+    _records.removeWhere((r) => r.id == record.id);
+    _records.add(record);
+  }
+
+  @override
+  Future<void> deleteRecord(String id) async {
+    _records.removeWhere((r) => r.id == id);
+  }
+
+  @override
+  Future<void> clearRecords() async {
+    _records.clear();
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 //  Platform-channel stubs
@@ -95,7 +127,10 @@ void main() {
   testWidgets('starts with one clear scan action and visible history',
       (tester) async {
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     // Let the permission check and camera init futures resolve.
     await tester.pumpAndSettle();
@@ -108,7 +143,10 @@ void main() {
 
   testWidgets('history remains one tap from the scan screen', (tester) async {
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -125,7 +163,10 @@ void main() {
     stubPermissionHandler(cameraStatus: 0); // 0 = denied
 
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -140,7 +181,10 @@ void main() {
     stubPermissionHandler(cameraStatus: 4); // 4 = permanentlyDenied
 
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -159,7 +203,10 @@ void main() {
     stubPermissionHandler(cameraStatus: 1);
 
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -179,7 +226,10 @@ void main() {
     stubPermissionHandler(cameraStatus: 1);
 
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -204,7 +254,10 @@ void main() {
     stubPermissionHandler(cameraStatus: 0); // denied
 
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -220,7 +273,10 @@ void main() {
     stubPermissionHandler(cameraStatus: 1);
 
     await tester.pumpWidget(
-      BananaClassifierApp(inferenceService: MockInferenceService()),
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
     );
     await tester.pumpAndSettle();
 
