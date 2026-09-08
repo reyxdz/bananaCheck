@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:video_player/video_player.dart';
 
 import '../theme/design_tokens.dart';
 import '../widgets/primary_button.dart';
@@ -658,37 +657,10 @@ class _CameraErrorView extends StatelessWidget {
 }
 
 /// Shown when the user tapped "Deny" but can still be asked again.
-class _PermissionDeniedView extends StatefulWidget {
+class _PermissionDeniedView extends StatelessWidget {
   const _PermissionDeniedView({required this.onAllow});
 
   final VoidCallback onAllow;
-
-  @override
-  State<_PermissionDeniedView> createState() => _PermissionDeniedViewState();
-}
-
-class _PermissionDeniedViewState extends State<_PermissionDeniedView> {
-  late final VideoPlayerController _mascotController;
-
-  @override
-  void initState() {
-    super.initState();
-    _mascotController = VideoPlayerController.asset(
-      'assets/images/bananamascot.mp4',
-    )..initialize().then((_) {
-        if (mounted) {
-          _mascotController.setLooping(true);
-          _mascotController.play();
-          setState(() {});
-        }
-      });
-  }
-
-  @override
-  void dispose() {
-    _mascotController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -700,15 +672,19 @@ class _PermissionDeniedViewState extends State<_PermissionDeniedView> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_mascotController.value.isInitialized)
-              SizedBox(
-                width: 150,
-                height: 150,
-                child: VideoPlayer(_mascotController),
-              )
-            else
-              const SizedBox(width: 150, height: 150),
-            const SizedBox(height: DesignTokens.spacingLarge),
+            // Mascot — shifted down so it overlaps the text card below.
+            Transform.translate(
+              offset: const Offset(0, 24),
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: Image.asset(
+                  'assets/images/banana_mascot.gif',
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            // Text + button card that the mascot "sits on"
             Text(
               'Camera access needed',
               style: Theme.of(context).textTheme.titleLarge,
@@ -727,7 +703,7 @@ class _PermissionDeniedViewState extends State<_PermissionDeniedView> {
               child: PrimaryButton(
                 icon: Icons.camera_alt,
                 label: 'Allow Camera',
-                onPressed: widget.onAllow,
+                onPressed: onAllow,
               ),
             ),
           ],
