@@ -17,12 +17,12 @@ abstract final class DesignTokens {
   static const Color shadow = Color(0x1F1F2A1F);
 
   // Ripeness & Variety status colors
-  static const Color ripenessUnripe = Color(0xFF2E7D32);     // Fresh Green
-  static const Color ripenessRipe = Color(0xFFE65100);       // Rich Amber / Gold
-  static const Color ripenessOverripe = Color(0xFF6D4C41);   // Brown / Auburn
-  static const Color confidenceHigh = Color(0xFF2E7D32);     // Green
-  static const Color confidenceMedium = Color(0xFFF57F17);   // Amber
-  static const Color confidenceLow = Color(0xFFD32F2F);      // Red
+  static const Color ripenessUnripe = Color(0xFF2E7D32); // Fresh Green
+  static const Color ripenessRipe = Color(0xFFE65100); // Rich Amber / Gold
+  static const Color ripenessOverripe = Color(0xFF6D4C41); // Brown / Auburn
+  static const Color confidenceHigh = Color(0xFF2E7D32); // Green
+  static const Color confidenceMedium = Color(0xFFF57F17); // Amber
+  static const Color confidenceLow = Color(0xFFD32F2F); // Red
 
   // Spacing Tokens
   static const double spacingExtraSmall = 4;
