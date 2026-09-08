@@ -38,7 +38,7 @@ class BananaClassifierApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Banana Check',
+      title: 'Bananalyze',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: _HomeScreen(
@@ -65,7 +65,7 @@ class _HomeScreen extends StatelessWidget {
       onHistory: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => const HistoryScreen(),
+            builder: (_) => HistoryScreen(storageService: storageService),
           ),
         );
       },

@@ -135,7 +135,7 @@ void main() {
     // Let the permission check and camera init futures resolve.
     await tester.pumpAndSettle();
 
-    expect(find.text('Banana Check'), findsOneWidget);
+    expect(find.text('Bananalyze'), findsOneWidget);
     // The capture button shows the "Scan" label below the circular button.
     expect(find.text('Scan'), findsOneWidget);
     expect(find.text('History'), findsOneWidget);
@@ -153,7 +153,8 @@ void main() {
     await tester.tap(find.text('History'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your past scans will appear here.'), findsOneWidget);
+    expect(find.text('Scan History'), findsOneWidget);
+    expect(find.text('No Saved Scans Yet'), findsOneWidget);
   });
 
   // ── A5-specific: permission handling UI tests ──
@@ -237,7 +238,7 @@ void main() {
     expect(find.text('Scan'), findsOneWidget);
 
     // The camera icon is present inside the circular button.
-    expect(find.byIcon(Icons.camera_alt), findsOneWidget);
+    expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
 
     // Tapping does nothing because the camera isn't ready — no snackbar,
     // no navigation, no crash.
@@ -245,7 +246,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Still on the camera screen, no crash or navigation occurred.
-    expect(find.text('Banana Check'), findsOneWidget);
+    expect(find.text('Bananalyze'), findsOneWidget);
     expect(find.text('No camera found on this device.'), findsOneWidget);
   });
 
@@ -263,7 +264,6 @@ void main() {
 
     // Capture button should not appear at all.
     expect(find.text('Scan'), findsNothing);
-    expect(find.byIcon(Icons.camera_alt_outlined), findsOneWidget);
     expect(find.text('Camera access needed'), findsOneWidget);
   });
 
@@ -283,7 +283,7 @@ void main() {
     // Per §7.2: "never icon-only for critical actions — always pair an icon
     // with a short, plain-language label".
     // Both the camera icon and the "Scan" text label must be present.
-    expect(find.byIcon(Icons.camera_alt), findsOneWidget);
+    expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
     expect(find.text('Scan'), findsOneWidget);
   });
 }

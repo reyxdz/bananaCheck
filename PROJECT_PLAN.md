@@ -463,7 +463,7 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | A19 | Widget tests — results screen | 1 day | Wk 6 | A10 |
 | A20 | Widget tests — history screen | 1 day | Wk 6 | A14 |
 | A21 | **Integration:** swap `MockInferenceService` → real `TFLiteInferenceService` | 1 day | Wk 7 | B13 (Marc Paul) |
-| A22 | Device testing on physical Android phone(s), including outdoor sunlight readability check (§7.4) | 2 days | Wk 7 | A21 |
+| A22 | Device testing on physical Android phone(s), including outdoor sunlight readability gitcheck (§7.4) | 2 days | Wk 7 | A21 |
 | A23 | Bug fixes from device testing | 2 days | Wk 7–8 | A22 |
 | A24 | Final UI/UX pass + buffer | 2 days | Wk 8 | A23 |
 

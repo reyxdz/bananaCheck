@@ -77,7 +77,7 @@ void main() {
 
       await tester.pumpWidget(buildCard(result: result));
 
-      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
     });
 
     testWidgets('shows hourglass icon for unripe result', (tester) async {
@@ -89,7 +89,7 @@ void main() {
 
       await tester.pumpWidget(buildCard(result: result));
 
-      expect(find.byIcon(Icons.hourglass_empty), findsOneWidget);
+      expect(find.byIcon(Icons.hourglass_top_rounded), findsOneWidget);
     });
 
     testWidgets('shows warning icon for overripe result', (tester) async {
@@ -101,7 +101,7 @@ void main() {
 
       await tester.pumpWidget(buildCard(result: result));
 
-      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
     });
 
     // ── Image handling ──

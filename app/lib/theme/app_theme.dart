@@ -16,6 +16,22 @@ abstract final class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: DesignTokens.background,
       fontFamily: 'Roboto',
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
+        scrolledUnderElevation: 0,
+        titleTextStyle: TextStyle(
+          color: DesignTokens.textPrimary,
+          fontSize: DesignTokens.headingTextSize,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Roboto',
+        ),
+        iconTheme: IconThemeData(
+          color: DesignTokens.textPrimary,
+          size: DesignTokens.iconMedium,
+        ),
+      ),
       textTheme: const TextTheme(
         bodyMedium: TextStyle(
           color: DesignTokens.textPrimary,
@@ -26,6 +42,11 @@ abstract final class AppTheme {
           color: DesignTokens.textPrimary,
           fontSize: DesignTokens.bodyTextSize,
           fontWeight: FontWeight.w400,
+        ),
+        titleMedium: TextStyle(
+          color: DesignTokens.textPrimary,
+          fontSize: DesignTokens.subheadingTextSize,
+          fontWeight: FontWeight.w600,
         ),
         titleLarge: TextStyle(
           color: DesignTokens.textPrimary,
@@ -48,6 +69,19 @@ abstract final class AppTheme {
           ),
         ),
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: DesignTokens.primaryLight,
+        labelStyle: const TextStyle(
+          color: DesignTokens.primaryDark,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
+          side: BorderSide.none,
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(
@@ -67,9 +101,14 @@ abstract final class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
+          foregroundColor: DesignTokens.primary,
           minimumSize: const Size(
             DesignTokens.minimumTouchTarget,
             DesignTokens.minimumTouchTarget,
+          ),
+          textStyle: const TextStyle(
+            fontSize: DesignTokens.bodyTextSize,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),

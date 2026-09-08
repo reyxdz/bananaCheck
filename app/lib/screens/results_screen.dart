@@ -37,11 +37,11 @@ class ResultsScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top bar ──
+            // ── Top bar with branding ──
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 DesignTokens.spacingLarge,
-                DesignTokens.spacingLarge,
+                DesignTokens.spacingMedium,
                 DesignTokens.spacingLarge,
                 0,
               ),
@@ -49,15 +49,34 @@ class ResultsScreen extends StatelessWidget {
                 children: [
                   // Back arrow for system navigation (accessibility).
                   IconButton(
-                    icon: const Icon(Icons.arrow_back),
+                    icon: const Icon(Icons.arrow_back_rounded),
                     iconSize: DesignTokens.iconMedium,
                     onPressed: onScanAgain,
                     tooltip: 'Go back',
                   ),
-                  const SizedBox(width: DesignTokens.spacingSmall),
+                  const SizedBox(width: DesignTokens.spacingExtraSmall),
                   Text(
-                    'Your Result',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    'Scan Result',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: DesignTokens.primaryDark,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const Spacer(),
+                  ClipRRect(
+                    borderRadius:
+                        BorderRadius.circular(DesignTokens.radiusSmall),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.eco,
+                        color: DesignTokens.primary,
+                        size: 24,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -73,7 +92,7 @@ class ResultsScreen extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    // The main result card (image + headline + confidence).
+                    // The main result card (image + headline + confidence + advice).
                     ResultCard(
                       result: result,
                       imagePath: imagePath,
@@ -115,7 +134,7 @@ class ResultsScreen extends StatelessWidget {
                 width: double.infinity,
                 height: DesignTokens.primaryActionSize,
                 child: PrimaryButton(
-                  icon: Icons.camera_alt,
+                  icon: Icons.camera_alt_rounded,
                   label: 'Scan Again',
                   onPressed: onScanAgain,
                 ),
