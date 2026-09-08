@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_player/video_player.dart';
 
 import '../theme/design_tokens.dart';
 import '../widgets/primary_button.dart';
@@ -657,10 +658,37 @@ class _CameraErrorView extends StatelessWidget {
 }
 
 /// Shown when the user tapped "Deny" but can still be asked again.
-class _PermissionDeniedView extends StatelessWidget {
+class _PermissionDeniedView extends StatefulWidget {
   const _PermissionDeniedView({required this.onAllow});
 
   final VoidCallback onAllow;
+
+  @override
+  State<_PermissionDeniedView> createState() => _PermissionDeniedViewState();
+}
+
+class _PermissionDeniedViewState extends State<_PermissionDeniedView> {
+  late final VideoPlayerController _mascotController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mascotController = VideoPlayerController.asset(
+      'assets/images/bananamascot.mp4',
+    )..initialize().then((_) {
+        if (mounted) {
+          _mascotController.setLooping(true);
+          _mascotController.play();
+          setState(() {});
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _mascotController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -672,16 +700,14 @@ class _PermissionDeniedView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/logo.png',
-              width: DesignTokens.logoMedium,
-              height: DesignTokens.logoMedium,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.camera_alt_outlined,
-                color: DesignTokens.textSecondary,
-                size: DesignTokens.iconLarge,
-              ),
-            ),
+            if (_mascotController.value.isInitialized)
+              SizedBox(
+                width: 150,
+                height: 150,
+                child: VideoPlayer(_mascotController),
+              )
+            else
+              const SizedBox(width: 150, height: 150),
             const SizedBox(height: DesignTokens.spacingLarge),
             Text(
               'Camera access needed',
@@ -701,7 +727,7 @@ class _PermissionDeniedView extends StatelessWidget {
               child: PrimaryButton(
                 icon: Icons.camera_alt,
                 label: 'Allow Camera',
-                onPressed: onAllow,
+                onPressed: widget.onAllow,
               ),
             ),
           ],
