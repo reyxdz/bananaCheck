@@ -13,7 +13,23 @@ class ClassificationResult {
     }
   }
 
+  /// Deserialise from a flat map (e.g. an sqflite row).
+  factory ClassificationResult.fromMap(Map<String, dynamic> map) {
+    return ClassificationResult(
+      variety: map['variety'] as String,
+      ripeness: map['ripeness'] as String,
+      confidence: (map['confidence'] as num).toDouble(),
+    );
+  }
+
   final String variety;
   final String ripeness;
   final double confidence;
+
+  /// Serialise to a flat map suitable for sqflite insertion.
+  Map<String, dynamic> toMap() => {
+        'variety': variety,
+        'ripeness': ripeness,
+        'confidence': confidence,
+      };
 }
