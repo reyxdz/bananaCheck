@@ -29,7 +29,14 @@ banana-classifier/
 │   │   │   ├── inference_service.dart   # TFLite wrapper
 │   │   │   └── storage_service.dart     # sqflite/Hive wrapper
 │   │   ├── models/
+│   │   │   ├── classification_result.dart
+│   │   │   ├── scan_record.dart
+│   │   │   └── banana_info_data.dart  # hardcoded health benefits & dish data (§7.6)
 │   │   └── widgets/
+│   │       ├── result_card.dart
+│   │       ├── confidence_indicator.dart
+│   │       ├── health_benefits_card.dart   # health benefits display (§7.6)
+│   │       └── dish_suggestions_card.dart # dish suggestions display (§7.6)
 │   ├── assets/
 │   │   └── model/               # bundled .tflite file + labels.txt
 │   ├── test/                    # unit + widget tests
@@ -385,6 +392,35 @@ pytest
 - The PR template (§4.3) includes a checklist item confirming UI guideline compliance for any UI-touching PR.
 - Recommend Emanuel build `design_tokens.dart` and a small set of reusable themed components (`PrimaryButton`, `ResultCard`, etc.) in Week 1 (see §9, task A1/A2 area) so every subsequent screen pulls from the same source instead of reinventing style per screen.
 
+### 7.6 Banana Info Data — Health Benefits & Dish Suggestions
+
+The app supports **7 fixed banana varieties**: Saba, Bungulan, Cavendish, Lakatan, Senorita, Latundan, and Morado. For each variety, the results screen shows **health benefits** and **suggested dishes** — all hardcoded, no API or database required.
+
+#### Data rules
+
+- **All variety data lives in a single file:** `lib/models/banana_info_data.dart`. This file contains a `BananaInfo` model class and a `bananaInfoMap` constant (`Map<String, BananaInfo>`) keyed by lowercase variety name.
+- **Do not scatter hardcoded health benefits or dish data across widgets.** Widgets receive a `BananaInfo` object — they never construct one themselves.
+- **Lookup is by variety name.** After inference, the variety string from `ClassificationResult` is lowercased and used as the map key. If the variety is not found in the map (e.g. an unknown class from a future model), the health benefits/dish sections are gracefully hidden — no crash, no empty card.
+- **Health benefit statements are general and informational**, sourced from standard references (USDA / FNRI). The app is not a dietary or medical tool.
+
+#### Supported varieties & example dishes
+
+| Variety | Example Dishes |
+|---|---|
+| **Saba** | Banana cue, Turon, Ginanggang, Maruya, Nilupak, Saba con yelo |
+| **Bungulan** | Eaten fresh, Banana shake, Fruit salad |
+| **Cavendish** | Banana bread, Smoothie bowl, Banana pancakes, Banana split |
+| **Lakatan** | Eaten fresh, Banana-Q, Halo-halo topping, Banana chips |
+| **Senorita** | Eaten fresh (snack banana), Dessert garnish, Fruit platter |
+| **Latundan** | Eaten fresh, Banana fritter, Banana ice cream, Ginataang saging |
+| **Morado** | Eaten fresh, Banana flambe, Purple banana bread, Smoothies |
+
+#### UI presentation
+
+- **`HealthBenefitsCard` widget** — displays a list of health benefits for the scanned variety (e.g. "Rich in potassium — good for heart health", "High in fiber — aids digestion"). Uses design tokens for all styling. Plain language only — no jargon (§7.3).
+- **`DishSuggestionsCard` widget** — displays suggested dishes as styled chips. No interaction needed — informational only.
+- Both cards appear inside `ResultCard`, below the existing confidence indicator and vendor advice sections. They render only when a `BananaInfo` entry exists for the scanned variety.
+
 ---
 
 ## 8. Role Split (2 developers + 1 project owner/monitor)
@@ -450,6 +486,10 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | A6 | Camera screen — live preview | 1 day | Wk 2 | A5 |
 | A7 | Camera screen — capture button (large, single primary action per §7.1) | 1 day | Wk 2 | A6 |
 | A8 | Results screen — UI layout (variety, ripeness, plain-language confidence per §7.3) | 2 days | Wk 3 | A2, A4 |
+| A25 | Create `BananaInfo` model + `banana_info_data.dart` hardcoded data map (§7.6) | 1 day | Wk 3 | A2 |
+| A26 | `HealthBenefitsCard` widget — health benefits display (§7.6) | 1 day | Wk 3 | A25 |
+| A27 | `DishSuggestionsCard` widget — dish suggestions display (§7.6) | 1 day | Wk 3 | A25 |
+| A28 | Wire `HealthBenefitsCard` + `DishSuggestionsCard` into `ResultCard` | 0.5 day | Wk 3 | A8, A26, A27 |
 | A9 | Results screen — wire to `MockInferenceService` | 1 day | Wk 3 | A7, A8 |
 | A10 | "Scan Again" navigation loop | 1 day | Wk 3 | A9 |
 | A11 | Local storage setup (sqflite/Hive) | 1 day | Wk 4 | A3 |
@@ -462,12 +502,14 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | A18 | Widget tests — camera screen | 1 day | Wk 6 | A7 |
 | A19 | Widget tests — results screen | 1 day | Wk 6 | A10 |
 | A20 | Widget tests — history screen | 1 day | Wk 6 | A14 |
+| A29 | Widget tests — `HealthBenefitsCard` + `DishSuggestionsCard` + updated `ResultCard` | 1 day | Wk 6 | A28 |
 | A21 | **Integration:** swap `MockInferenceService` → real `TFLiteInferenceService` | 1 day | Wk 7 | B13 (Marc Paul) |
 | A22 | Device testing on physical Android phone(s), including outdoor sunlight readability gitcheck (§7.4) | 2 days | Wk 7 | A21 |
 | A23 | Bug fixes from device testing | 2 days | Wk 7–8 | A22 |
 | A24 | Final UI/UX pass + buffer | 2 days | Wk 8 | A23 |
 
-**Track A total: ~27 days** (~5.4 weeks of work spread across 8 calendar weeks — built-in slack)
+
+**Track A total: ~31.5 days** (~6.3 weeks of work spread across 8 calendar weeks — still fits with built-in slack)
 
 ### Track B — Marc Paul (Dataset / Model / ML Layer)
 
@@ -500,10 +542,10 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 |---|---|---|
 | **1** | Project setup, design tokens, storage + interface definitions | Env setup, define classes, joint interface definition |
 | **2** | Camera screen (permissions, preview, capture) | Dataset sourcing begins |
-| **3** | Results screen + mock wiring, scan-again loop | Dataset sourcing continues, labeling |
+| **3** | Results screen + mock wiring, scan-again loop, banana info data + health benefits/dish widgets (§7.6) | Dataset sourcing continues, labeling |
 | **4** | Local storage, history screen (list + delete) | Preprocessing, train/test split, baseline training starts |
 | **5** | Loading state, error handling, full UI guideline audit | Baseline training finishes, evaluation, tuning begins |
-| **6** | Widget tests (camera, results, history) | Tuning continues, TFLite conversion + validation, Dart integration starts |
+| **6** | Widget tests (camera, results, history, health benefits/dish cards) | Tuning continues, TFLite conversion + validation, Dart integration starts |
 | **7** | **Integration** (swap to real model), device testing incl. outdoor readability, bug fixes | Finish Dart integration, unit tests, FastAPI skeleton |
 | **8** | Final bug fixes, UI/UX polish, buffer | Document metrics, final tuning, buffer |
 
@@ -563,6 +605,10 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 ### Week 3 — Results Screen & Dataset Labeling
 **Emanuel**
 - [ ] A8 — Results screen: UI layout (variety, ripeness, plain-language confidence per §7.3)
+- [ ] A25 — Create `BananaInfo` model + `banana_info_data.dart` hardcoded data map (§7.6)
+- [ ] A26 — `HealthBenefitsCard` widget: health benefits display (§7.6)
+- [ ] A27 — `DishSuggestionsCard` widget: dish suggestions display (§7.6)
+- [ ] A28 — Wire health benefits/dish cards into `ResultCard`
 - [ ] A9 — Results screen: wire to `MockInferenceService`
 - [ ] A10 — "Scan Again" navigation loop
 
@@ -619,6 +665,7 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 - [ ] A18 — Widget tests: camera screen
 - [ ] A19 — Widget tests: results screen
 - [ ] A20 — Widget tests: history screen
+- [ ] A29 — Widget tests: `HealthBenefitsCard` + `DishSuggestionsCard` + updated `ResultCard` (§7.6)
 
 **Marc Paul**
 - [ ] B10 — Hyperparameter tuning — finishing up
