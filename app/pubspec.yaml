@@ -76,6 +76,7 @@ flutter:
   assets:
     - assets/model/
     - assets/images/logo.png
+    - assets/images/banana_mascot.gif
 
   # To add assets to your application, add an assets section, like this:
   # assets:
