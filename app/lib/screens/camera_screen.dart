@@ -672,17 +672,19 @@ class _PermissionDeniedView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(
-              'assets/images/logo.png',
-              width: DesignTokens.logoMedium,
-              height: DesignTokens.logoMedium,
-              errorBuilder: (_, __, ___) => const Icon(
-                Icons.camera_alt_outlined,
-                color: DesignTokens.textSecondary,
-                size: DesignTokens.iconLarge,
+            // Mascot — shifted down so it overlaps the text card below.
+            Transform.translate(
+              offset: const Offset(0, 24),
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: Image.asset(
+                  'assets/images/banana_mascot.gif',
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
-            const SizedBox(height: DesignTokens.spacingLarge),
+            // Text + button card that the mascot "sits on"
             Text(
               'Camera access needed',
               style: Theme.of(context).textTheme.titleLarge,
