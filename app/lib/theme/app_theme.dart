@@ -58,7 +58,7 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w700,
         ),
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: DesignTokens.surface,
         elevation: 2,
         shadowColor: DesignTokens.shadow,
