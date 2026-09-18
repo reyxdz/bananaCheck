@@ -2,9 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../models/banana_info_data.dart';
 import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
 import 'confidence_indicator.dart';
+import 'dish_suggestions_card.dart';
+import 'health_benefits_card.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -226,9 +229,35 @@ class ResultCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Health Benefits & Dish Suggestions (§7.6) ──
+            _buildInfoCards(),
           ],
         ),
       ),
+    );
+  }
+
+  /// Builds [HealthBenefitsCard] and [DishSuggestionsCard] from
+  /// [bananaInfoMap]. Returns an empty [SizedBox] when the variety is not
+  /// found so the layout degrades gracefully.
+  Widget _buildInfoCards() {
+    final info = bananaInfoMap[result.variety.toLowerCase()];
+    if (info == null) return const SizedBox.shrink();
+
+    final lowerRipeness = result.ripeness.toLowerCase();
+    final ripenessInfo = info.byRipeness[lowerRipeness];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: DesignTokens.spacingMedium),
+        HealthBenefitsCard(info: info, ripeness: lowerRipeness),
+        if (ripenessInfo != null) ...[
+          const SizedBox(height: DesignTokens.spacingMedium),
+          DishSuggestionsCard(ripenessInfo: ripenessInfo),
+        ],
+      ],
     );
   }
 }
