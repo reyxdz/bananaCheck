@@ -103,8 +103,7 @@ void main() {
       for (final entry in bananaInfoMap.entries) {
         for (final ripenessKey in entry.value.byRipeness.keys) {
           expect(validRipenessKeys, contains(ripenessKey),
-              reason:
-                  '${entry.key} has invalid ripeness key "$ripenessKey"');
+              reason: '${entry.key} has invalid ripeness key "$ripenessKey"');
         }
       }
     });
@@ -113,8 +112,7 @@ void main() {
       for (final entry in bananaInfoMap.entries) {
         for (final ripenessEntry in entry.value.byRipeness.entries) {
           expect(ripenessEntry.value.dishSuggestions, isNotEmpty,
-              reason:
-                  '${entry.key} / ${ripenessEntry.key} should have dishes');
+              reason: '${entry.key} / ${ripenessEntry.key} should have dishes');
         }
       }
     });
