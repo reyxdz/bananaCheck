@@ -9,7 +9,7 @@ class MockInferenceService implements InferenceService {
     ClassificationResult? result,
   }) : result = result ??
             ClassificationResult(
-              variety: 'Lakatan',
+              variety: 'Saba',
               ripeness: 'Ripe',
               confidence: 0.92,
             );
