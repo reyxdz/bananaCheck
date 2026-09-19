@@ -93,15 +93,15 @@ const bananaInfoMap = <String, BananaInfo>{
     },
   ),
 
-  // ── Bungulan ──────────────────────────────────────────────────────────
-  'bungulan': BananaInfo(
+  // ── Cordova ──────────────────────────────────────────────────────────
+  'cordova': BananaInfo(
     generalBenefits: [
       'Good source of Vitamin C — supports immune health',
       'Contains potassium — helps regulate blood pressure',
       'Light and easy to digest',
     ],
     byRipeness: {
-      // Bungulan is not typically eaten unripe — key omitted intentionally.
+      // Cordova is not typically eaten unripe — key omitted intentionally.
       // Widgets fall back to generalBenefits only (§7.6 fallback rule).
       'ripe': RipenessInfo(
         healthBenefits: [
@@ -236,35 +236,45 @@ const bananaInfoMap = <String, BananaInfo>{
     },
   ),
 
-  // ── Morado ────────────────────────────────────────────────────────────
-  'morado': BananaInfo(
+  // ── Lakatan ────────────────────────────────────────────────────────────
+  'lakatan': BananaInfo(
     generalBenefits: [
-      'Rich in antioxidants — the purple skin contains anthocyanins',
-      'Good source of potassium — supports heart health',
-      'Contains Vitamin C and B6',
+      'Rich in potassium — supports heart and muscle function',
+      'Good source of Vitamin B6 — aids energy metabolism',
+      'Contains Vitamin C — supports immune health',
     ],
     byRipeness: {
-      // Morado is not typically eaten unripe — key omitted intentionally.
+      'unripe': RipenessInfo(
+        healthBenefits: [
+          'Higher resistant starch — helps manage blood sugar',
+          'Lower sugar content compared to ripe',
+        ],
+        dishSuggestions: [
+          'Banana chips',
+          'Green banana salad',
+        ],
+      ),
       'ripe': RipenessInfo(
         healthBenefits: [
-          'Peak anthocyanin content — powerful antioxidants',
           'Natural sugars provide quick energy',
+          'Peak vitamin content — ideal as a fresh snack',
         ],
         dishSuggestions: [
           'Eaten fresh',
-          'Banana flambe',
-          'Purple banana bread',
+          'Banana cue',
+          'Turon',
+          'Smoothie bowl',
         ],
       ),
       'overripe': RipenessInfo(
         healthBenefits: [
-          'Highest antioxidant levels',
-          'Softer texture — perfect for blending',
+          'Highest antioxidant content',
+          'Easiest to digest — gentle on the stomach',
         ],
         dishSuggestions: [
-          'Smoothies',
-          'Purple banana jam',
-          'Frozen banana pops',
+          'Banana bread',
+          'Banana pancakes',
+          'Banana ice cream',
         ],
       ),
     },

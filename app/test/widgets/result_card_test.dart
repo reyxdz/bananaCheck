@@ -149,9 +149,9 @@ void main() {
 
     testWidgets('known variety + missing ripeness shows health card only',
         (tester) async {
-      // Bungulan has no 'unripe' key.
+      // Cordova has no 'unripe' key.
       final result = ClassificationResult(
-        variety: 'Bungulan',
+        variety: 'Cordova',
         ripeness: 'Unripe',
         confidence: 0.85,
       );
@@ -163,7 +163,7 @@ void main() {
       expect(find.text('Good source of Vitamin C — supports immune health'),
           findsOneWidget);
 
-      // DishSuggestionsCard hidden (no unripe data for Bungulan).
+      // DishSuggestionsCard hidden (no unripe data for Cordova).
       expect(find.text('Suggested Dishes'), findsNothing);
     });
 
