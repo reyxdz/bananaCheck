@@ -95,11 +95,11 @@ void main() {
       expect(find.text('Natural sugars provide quick energy'), findsOneWidget);
     });
 
-    testWidgets('works with Bungulan + unripe (fallback — no unripe key)',
+    testWidgets('works with Cordova + unripe (fallback — no unripe key)',
         (tester) async {
-      final bungulan = bananaInfoMap['bungulan']!;
+      final cordova = bananaInfoMap['cordova']!;
 
-      await tester.pumpWidget(buildWidget(info: bungulan, ripeness: 'unripe'));
+      await tester.pumpWidget(buildWidget(info: cordova, ripeness: 'unripe'));
 
       // General benefits still visible.
       expect(find.text('Good source of Vitamin C — supports immune health'),

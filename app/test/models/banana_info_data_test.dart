@@ -66,11 +66,11 @@ void main() {
     test('contains all expected varieties', () {
       const expectedVarieties = [
         'saba',
-        'bungulan',
+        'cordova',
         'cavendish',
         'senorita',
         'latundan',
-        'morado',
+        'lakatan',
       ];
 
       for (final variety in expectedVarieties) {
@@ -79,8 +79,9 @@ void main() {
       }
     });
 
-    test('does not contain removed variety Lakatan', () {
-      expect(bananaInfoMap, isNot(contains('lakatan')));
+    test('does not contain removed varieties Bungulan and Morado', () {
+      expect(bananaInfoMap, isNot(contains('bungulan')));
+      expect(bananaInfoMap, isNot(contains('morado')));
     });
 
     test('every variety has at least one general benefit', () {
@@ -141,11 +142,18 @@ void main() {
       expect(cavendish.byRipeness, contains('overripe'));
     });
 
+    test('Lakatan has all three ripeness levels', () {
+      final lakatan = bananaInfoMap['lakatan']!;
+      expect(lakatan.byRipeness, contains('unripe'));
+      expect(lakatan.byRipeness, contains('ripe'));
+      expect(lakatan.byRipeness, contains('overripe'));
+    });
+
     test('varieties not typically eaten unripe omit the unripe key', () {
-      // Per §7.6 table: Bungulan, Senorita, Latundan, Morado are not
+      // Per §7.6 table: Cordova, Senorita, Latundan are not
       // typically eaten unripe — their 'unripe' key should be absent so
       // the widget layer falls back to generalBenefits only.
-      const noUnripeVarieties = ['bungulan', 'senorita', 'latundan', 'morado'];
+      const noUnripeVarieties = ['cordova', 'senorita', 'latundan'];
 
       for (final variety in noUnripeVarieties) {
         expect(bananaInfoMap[variety]!.byRipeness, isNot(contains('unripe')),
