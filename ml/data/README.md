@@ -8,40 +8,36 @@ Use the `Variety_Ripeness` naming convention — one folder per class:
 
 ```text
 data/
-├── Saba_Unripe/
-├── Saba_Ripe/
-├── Saba_Overripe/
-├── Lakatan_Unripe/
-├── Lakatan_Ripe/
-├── Lakatan_Overripe/
+├── Cavendish_Unripe/
+├── Cavendish_Ripe/
+├── Cavendish_Overripe/
 ├── Senorita_Unripe/
 ├── Senorita_Ripe/
 ├── Senorita_Overripe/
 ├── Latundan_Unripe/
 ├── Latundan_Ripe/
 ├── Latundan_Overripe/
-├── Morado_Unripe/
-├── Morado_Ripe/
-├── Morado_Overripe/
-├── Cavendish_Unripe/
-├── Cavendish_Ripe/
-├── Cavendish_Overripe/
-├── Bungulan_Unripe/
-├── Bungulan_Ripe/
-└── Bungulan_Overripe/
+├── Cordova_Unripe/
+├── Cordova_Ripe/
+├── Cordova_Overripe/
+├── Lakatan_Unripe/
+├── Lakatan_Ripe/
+├── Lakatan_Overripe/
+├── Saba_Unripe/
+├── Saba_Ripe/
+└── Saba_Overripe/
 ```
 
-## Varieties (7)
+## Varieties (6)
 
 | Variety    | Description                          |
 |------------|--------------------------------------|
-| Saba       | Cooking banana, thick-skinned        |
-| Lakatan    | Sweet, golden-yellow when ripe       |
+| Cavendish  | Most common commercial banana        |
 | Senorita   | Small, finger-sized dessert banana   |
 | Latundan   | Thin-skinned, mildly sweet           |
-| Morado     | Red/purple-skinned variety           |
-| Cavendish  | Most common commercial banana        |
-| Bungulan   | Fragrant, soft-textured dessert type |
+| Cordova    | Regional Philippine cooking variety  |
+| Lakatan    | Sweet, golden-yellow when ripe       |
+| Saba       | Cooking banana, thick-skinned        |
 
 ## Ripeness Stages (3)
 
@@ -53,7 +49,32 @@ data/
 
 ## Total Classes
 
-7 varieties × 3 ripeness stages = **21 classes**
+6 varieties × 3 ripeness stages = **18 classes**
+
+## Minimum Requirements
+
+- **At least 100 images per class** (ideally 200+) for reliable training.
+- Accepted formats: `.jpg`, `.jpeg`, `.png`.
+- Images should capture varied angles, lighting, and backgrounds.
+- Avoid watermarked or heavily filtered images.
+
+## Sourcing Checklist
+
+- [ ] Search public datasets (Kaggle, Roboflow, Google Images)
+- [ ] Photograph bananas locally for each variety × ripeness combination
+- [ ] Verify class balance — no class should have fewer than 50% of the largest
+- [ ] Run `python -m ml.dataset_scaffold --verify` to check folder structure
+
+## Setup
+
+Run the scaffold script to create all 18 class folders:
+
+```bash
+cd ml
+python -m ml.dataset_scaffold
+```
+
+Then place images into the matching `Variety_Ripeness/` folder.
 
 Store individual photographs inside the matching leaf folder. The folder names
 **must** match the `ALL_CLASSES` order in `ml/classes.py` — use
