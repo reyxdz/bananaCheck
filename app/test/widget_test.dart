@@ -212,7 +212,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // The error view should show a friendly message and a retry button.
-    expect(find.text('No camera found on this device.'), findsOneWidget);
+    expect(find.text("Camera isn't working right now"), findsOneWidget);
     expect(find.text('Try Again'), findsOneWidget);
     // Capture button with "Scan" label is still visible (permission granted).
     expect(find.text('Scan'), findsOneWidget);
@@ -247,7 +247,7 @@ void main() {
 
     // Still on the camera screen, no crash or navigation occurred.
     expect(find.text('Bananalyze'), findsOneWidget);
-    expect(find.text('No camera found on this device.'), findsOneWidget);
+    expect(find.text("Camera isn't working right now"), findsOneWidget);
   });
 
   testWidgets('capture button is hidden when permission is not granted',
