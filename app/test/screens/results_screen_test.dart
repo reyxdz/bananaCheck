@@ -40,10 +40,10 @@ void main() {
 
     // ── Layout structure (§7.2: card-based, modern, flat) ──
 
-    testWidgets('shows "Your Result" title in the top bar', (tester) async {
+    testWidgets('shows "Scan Result" title in the top bar', (tester) async {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
-      expect(find.text('Your Result'), findsOneWidget);
+      expect(find.text('Scan Result'), findsOneWidget);
     });
 
     testWidgets('shows the ResultCard with variety–ripeness headline',
@@ -91,7 +91,7 @@ void main() {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
       expect(find.text('Scan Again'), findsOneWidget);
-      expect(find.byIcon(Icons.camera_alt), findsOneWidget);
+      expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
     });
 
     testWidgets('tapping "Scan Again" triggers onScanAgain callback',
@@ -111,7 +111,7 @@ void main() {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
       // Per §7.2: always pair an icon with a short, plain-language label.
-      expect(find.byIcon(Icons.camera_alt), findsOneWidget);
+      expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
       expect(find.text('Scan Again'), findsOneWidget);
     });
 
@@ -122,19 +122,19 @@ void main() {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
       // "Ripe" should have a check icon — not relying on color alone.
-      expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
     });
 
     testWidgets('unripe result shows hourglass icon', (tester) async {
       await tester.pumpWidget(buildScreen(result: medConfidenceResult));
 
-      expect(find.byIcon(Icons.hourglass_empty), findsOneWidget);
+      expect(find.byIcon(Icons.hourglass_top_rounded), findsOneWidget);
     });
 
     testWidgets('overripe result shows warning icon', (tester) async {
       await tester.pumpWidget(buildScreen(result: lowConfidenceResult));
 
-      expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
     });
 
     // ── Back navigation ──
@@ -142,7 +142,7 @@ void main() {
     testWidgets('back button triggers onScanAgain', (tester) async {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
-      await tester.tap(find.byIcon(Icons.arrow_back));
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
       await tester.pumpAndSettle();
 
       expect(scanAgainPressed, isTrue);

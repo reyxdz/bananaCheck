@@ -1,9 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
-import 'models/scan_record.dart';
+import 'screens/analyzing_screen.dart';
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/results_screen.dart';
@@ -19,7 +18,9 @@ void main() async {
 
   runApp(
     BananaClassifierApp(
-      inferenceService: MockInferenceService(),
+      inferenceService: MockInferenceService(
+        delay: const Duration(milliseconds: 800),
+      ),
       storageService: storageService,
     ),
   );
@@ -38,7 +39,7 @@ class BananaClassifierApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Banana Check',
+      title: 'Bananalyze',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: _HomeScreen(
@@ -65,34 +66,35 @@ class _HomeScreen extends StatelessWidget {
       onHistory: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => const HistoryScreen(),
+            builder: (_) => HistoryScreen(storageService: storageService),
           ),
         );
       },
     );
   }
 
-  Future<void> _handleScan(BuildContext context, File capturedFile) async {
-    final result = await inferenceService.classify(capturedFile);
-    if (!context.mounted) return;
-
-    // ── A12: persist the scan result to local storage ──
-    final record = ScanRecord(
-      id: const Uuid().v4(),
-      imagePath: capturedFile.path,
-      result: result,
-      scannedAt: DateTime.now(),
-    );
-    await storageService.saveRecord(record);
-
-    if (!context.mounted) return;
-
+  /// A15: Navigate to [AnalyzingScreen] which handles classify + save,
+  /// then forwards to [ResultsScreen] on completion.
+  void _handleScan(BuildContext context, File capturedFile) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ResultsScreen(
-          result: result,
-          imagePath: capturedFile.path,
-          onScanAgain: () => Navigator.of(context).pop(),
+        builder: (_) => AnalyzingScreen(
+          inferenceService: inferenceService,
+          storageService: storageService,
+          capturedFile: capturedFile,
+          onComplete: (result, imagePath) {
+            // Replace the AnalyzingScreen with ResultsScreen so pressing
+            // "back" returns to the camera, not the analyzing screen.
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute<void>(
+                builder: (_) => ResultsScreen(
+                  result: result,
+                  imagePath: imagePath,
+                  onScanAgain: () => Navigator.of(context).pop(),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

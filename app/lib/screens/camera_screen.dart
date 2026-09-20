@@ -4,7 +4,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../models/app_exception.dart';
 import '../theme/design_tokens.dart';
+import '../widgets/error_view.dart';
 import '../widgets/primary_button.dart';
 
 /// Camera permission status as seen by the screen UI.
@@ -214,14 +216,8 @@ class _CameraScreenState extends State<CameraScreen>
       widget.onScan(capturedFile);
     } catch (e) {
       if (!mounted) return;
-      // Plain-language error per §7.3.
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not take the photo — please try again.',
-          ),
-        ),
-      );
+      // Show a modal bottom sheet with the error so it isn't missed (A16).
+      _showCaptureError();
     } finally {
       if (mounted) setState(() => _isCapturing = false);
     }
@@ -230,6 +226,31 @@ class _CameraScreenState extends State<CameraScreen>
   void _disposeCamera() {
     _cameraController?.dispose();
     _cameraController = null;
+  }
+
+  /// Shows a non-dismissable bottom sheet with a plain-language capture error.
+  void _showCaptureError() {
+    showModalBottomSheet<void>(
+      context: context,
+      isDismissible: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(DesignTokens.radiusLarge),
+        ),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: DesignTokens.spacingExtraLarge,
+        ),
+        child: ErrorView(
+          exception: const AppCameraException(),
+          retryLabel: 'Try Again',
+          onRetry: () {
+            Navigator.of(sheetContext).pop();
+          },
+        ),
+      ),
+    );
   }
 
   // ─────────────────────────── build ───────────────────────────────────
@@ -244,30 +265,74 @@ class _CameraScreenState extends State<CameraScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // ── top bar (title + history) ──
+            // ── Enhanced top bar (Logo + Title + History) ──
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 DesignTokens.spacingLarge,
+                DesignTokens.spacingMedium,
                 DesignTokens.spacingLarge,
-                DesignTokens.spacingLarge,
-                0,
+                DesignTokens.spacingSmall,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Banana Check',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  // Logo + App Name
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius:
+                            BorderRadius.circular(DesignTokens.radiusSmall),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: DesignTokens.logoSmall,
+                          height: DesignTokens.logoSmall,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.center_focus_strong,
+                            color: DesignTokens.primary,
+                            size: DesignTokens.logoSmall,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: DesignTokens.spacingSmall),
+                      Text(
+                        'Bananalyze',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: DesignTokens.primaryDark,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.5,
+                            ),
+                      ),
+                    ],
                   ),
-                  TextButton.icon(
-                    onPressed: widget.onHistory,
-                    icon: const Icon(Icons.history),
-                    label: const Text('History'),
+                  // Styled History Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: DesignTokens.primaryLight,
+                      borderRadius:
+                          BorderRadius.circular(DesignTokens.radiusLarge),
+                    ),
+                    child: TextButton.icon(
+                      onPressed: widget.onHistory,
+                      icon: const Icon(
+                        Icons.history_rounded,
+                        color: DesignTokens.primaryDark,
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'History',
+                        style: TextStyle(
+                          color: DesignTokens.primaryDark,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: DesignTokens.spacingMedium),
+            const SizedBox(height: DesignTokens.spacingSmall),
 
             // ── main area — depends on permission state ──
             Expanded(
@@ -325,7 +390,7 @@ class _CameraScreenState extends State<CameraScreen>
       return const _CheckingIndicator();
     }
 
-    // Live preview with hint overlay + optional shutter flash.
+    // Live preview with hint overlay + target reticle + optional shutter flash.
     return _LivePreview(
       controller: controller,
       showShutterFlash: _showShutterFlash,
@@ -344,12 +409,14 @@ class _CheckingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(),
+      child: CircularProgressIndicator(
+        color: DesignTokens.primary,
+      ),
     );
   }
 }
 
-/// Live camera preview with a translucent hint overlay and shutter flash.
+/// Live camera preview with target scanning reticle frame, hint overlay, and shutter flash.
 class _LivePreview extends StatelessWidget {
   const _LivePreview({
     required this.controller,
@@ -379,6 +446,41 @@ class _LivePreview extends StatelessWidget {
             ),
           ),
 
+          // Center target reticle frame to help farmers align the banana
+          Center(
+            child: Container(
+              width: 250,
+              height: 330,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.85),
+                  width: 2.5,
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: DesignTokens.primaryDark.withOpacity(0.6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.center_focus_weak,
+                        color: DesignTokens.accent,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // Hint overlay at the bottom — sits on top of the live feed.
           Positioned(
             left: 0,
@@ -389,21 +491,34 @@ class _LivePreview extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black54],
+                  colors: [Colors.transparent, Color(0x7D000000)],
                 ),
               ),
               padding: const EdgeInsets.symmetric(
                 horizontal: DesignTokens.spacingLarge,
                 vertical: DesignTokens.spacingMedium,
               ),
-              child: const Text(
-                'Point at a banana and tap Scan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: DesignTokens.bodyTextSize,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.center_focus_strong,
+                    color: DesignTokens.accent,
+                    size: 20,
+                  ),
+                  SizedBox(width: DesignTokens.spacingSmall),
+                  Expanded(
+                    child: Text(
+                      'Center banana in frame and tap Scan.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: DesignTokens.bodyTextSize,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -422,7 +537,7 @@ class _LivePreview extends StatelessWidget {
 /// The large, circular capture button — the single primary action on the
 /// camera screen per §7.1.
 ///
-/// Sizing: 72dp diameter (exceeds the 64dp minimum from §7.4), centred,
+/// Sizing: 80dp outer diameter (exceeds the 64dp minimum from §7.4), centred,
 /// high-contrast primary-green fill with a white camera icon + label.
 class _CaptureButton extends StatelessWidget {
   const _CaptureButton({
@@ -487,7 +602,7 @@ class _CaptureButton extends StatelessWidget {
                             ),
                           )
                         : const Icon(
-                            Icons.camera_alt,
+                            Icons.camera_alt_rounded,
                             color: Colors.white,
                             size: DesignTokens.iconMedium,
                           ),
@@ -526,38 +641,9 @@ class _CameraErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.spacingLarge,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: DesignTokens.textSecondary,
-              size: DesignTokens.iconLarge,
-            ),
-            const SizedBox(height: DesignTokens.spacingLarge),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-            SizedBox(
-              width: double.infinity,
-              height: DesignTokens.primaryActionSize,
-              child: PrimaryButton(
-                icon: Icons.refresh,
-                label: 'Try Again',
-                onPressed: onRetry,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ErrorView(
+      exception: const AppCameraException(),
+      onRetry: onRetry,
     );
   }
 }
@@ -578,12 +664,19 @@ class _PermissionDeniedView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.camera_alt_outlined,
-              color: DesignTokens.textSecondary,
-              size: DesignTokens.iconLarge,
+            // Mascot — shifted down so it overlaps the text card below.
+            Transform.translate(
+              offset: const Offset(0, 24),
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: Image.asset(
+                  'assets/images/banana_mascot.gif',
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
-            const SizedBox(height: DesignTokens.spacingLarge),
+            // Text + button card that the mascot "sits on"
             Text(
               'Camera access needed',
               style: Theme.of(context).textTheme.titleLarge,
@@ -591,7 +684,7 @@ class _PermissionDeniedView extends StatelessWidget {
             ),
             const SizedBox(height: DesignTokens.spacingSmall),
             const Text(
-              'To check your bananas, the app needs to use your camera.\n'
+              'To analyze your bananas, Bananalyze needs to use your camera.\n'
               'Tap the button below to allow access.',
               textAlign: TextAlign.center,
             ),
@@ -642,7 +735,7 @@ class _PermissionBlockedView extends StatelessWidget {
             const Text(
               'You previously turned off camera access.\n'
               'Open your phone\'s Settings and turn it back on '
-              'so the app can check your bananas.',
+              'so Bananalyze can inspect your bananas.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: DesignTokens.spacingExtraLarge),
