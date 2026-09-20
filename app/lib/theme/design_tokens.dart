@@ -24,6 +24,9 @@ abstract final class DesignTokens {
   static const Color confidenceMedium = Color(0xFFF57F17); // Amber
   static const Color confidenceLow = Color(0xFFD32F2F); // Red
 
+  // Error colors
+  static const Color errorBackground = Color(0xFFFFF3F0); // Soft warm tint
+
   // Spacing Tokens
   static const double spacingExtraSmall = 4;
   static const double spacingSmall = 8;

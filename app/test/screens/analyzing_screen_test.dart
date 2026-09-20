@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:banana_classifier/models/app_exception.dart';
 import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/screens/analyzing_screen.dart';
@@ -185,12 +186,13 @@ void main() {
       // Pump once to let the failing future complete and setState fire.
       await tester.pump();
 
-      // Error message should appear.
+      // Error message should appear (ImageProcessingException per A16).
       expect(
-        find.text(
-          'Something went wrong while analyzing your banana. '
-          'Please try again.',
-        ),
+        find.text(const ImageProcessingException().userMessage),
+        findsOneWidget,
+      );
+      expect(
+        find.text(const ImageProcessingException().actionHint),
         findsOneWidget,
       );
       // Try Again button should be visible.
@@ -217,7 +219,45 @@ void main() {
       // Pump once to let the failing future complete.
       await tester.pump();
 
-      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.broken_image_rounded), findsOneWidget);
+    });
+
+    testWidgets('shows low-confidence error when confidence < 0.5',
+        (tester) async {
+      final lowConfidenceResult = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.3, // Below 0.5 threshold
+      );
+      final inferenceService =
+          _InstantInferenceService(result: lowConfidenceResult);
+      final storageService = _FakeStorageService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: inferenceService,
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Should show the low-confidence error, not the result.
+      expect(
+        find.text(const LowConfidenceException().userMessage),
+        findsOneWidget,
+      );
+      expect(
+        find.text(const LowConfidenceException().actionHint),
+        findsOneWidget,
+      );
+      expect(find.text('Try Again'), findsOneWidget);
+      // Storage should NOT have been called.
+      expect(storageService.saveCallCount, 0);
     });
   });
 }

@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../models/app_exception.dart';
 import '../models/scan_record.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
+import '../widgets/error_view.dart';
 import 'results_screen.dart';
 
 /// Screen displaying past banana scan records saved in local storage.
@@ -27,6 +29,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<ScanRecord> _records = [];
   bool _isLoading = true;
 
+  /// Non-null when loading history failed (A16).
+  AppException? _error;
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +45,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final items = await service.getRecords();
       if (mounted) {
@@ -50,14 +58,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = const StorageException();
+        });
+      }
     }
   }
 
   Future<void> _deleteItem(String id) async {
     final service = widget.storageService;
     if (service != null) {
-      await service.deleteRecord(id);
+      try {
+        await service.deleteRecord(id);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Couldn\'t delete this scan — please try again.'),
+            ),
+          );
+        }
+        return;
+      }
     }
     await _loadHistory();
   }
@@ -87,7 +111,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (confirmed == true && widget.storageService != null) {
-      await widget.storageService!.clearRecords();
+      try {
+        await widget.storageService!.clearRecords();
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Couldn\'t clear your history — please try again.'),
+            ),
+          );
+        }
+        return;
+      }
       await _loadHistory();
     }
   }
@@ -110,9 +146,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: DesignTokens.primary),
             )
-          : _records.isEmpty
-              ? _buildEmptyState(context)
-              : _buildRecordList(context),
+          : _error != null
+              ? ErrorView(
+                  exception: _error!,
+                  onRetry: _loadHistory,
+                  retryLabel: 'Try Again',
+                )
+              : _records.isEmpty
+                  ? _buildEmptyState(context)
+                  : _buildRecordList(context),
     );
   }
 
