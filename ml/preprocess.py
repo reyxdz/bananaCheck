@@ -22,16 +22,16 @@ def require_directory(path: Path) -> Path:
 
 
 def validate_dataset_structure(root: Path) -> None:
-    """Check that *root* contains a subdirectory for every one of the 21 classes.
+    """Check that *root* contains a subdirectory for every one of the 18 classes.
 
     Expected layout::
 
         root/
-          Saba_Unripe/
-          Saba_Ripe/
-          Saba_Overripe/
+          Cavendish_Unripe/
+          Cavendish_Ripe/
+          Cavendish_Overripe/
           ...
-          Bungulan_Overripe/
+          Saba_Overripe/
 
     Raises
     ------

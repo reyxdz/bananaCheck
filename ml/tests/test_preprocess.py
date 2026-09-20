@@ -23,7 +23,7 @@ def test_require_directory_rejects_missing_path(tmp_path: Path) -> None:
 def test_validate_dataset_structure_passes_when_all_class_folders_exist(
     tmp_path: Path,
 ) -> None:
-    """No exception when every one of the 21 class directories is present."""
+    """No exception when every one of the 18 class directories is present."""
     for banana_class in ALL_CLASSES:
         (tmp_path / banana_class.folder_name).mkdir()
 
@@ -35,7 +35,7 @@ def test_validate_dataset_structure_raises_listing_all_missing_classes(
     tmp_path: Path,
 ) -> None:
     """All missing directory names appear in the error message at once."""
-    # Create only the first 3 class folders — leave the other 18 missing
+    # Create only the first 3 class folders — leave the other 15 missing
     for banana_class in ALL_CLASSES[:3]:
         (tmp_path / banana_class.folder_name).mkdir()
 
@@ -43,7 +43,7 @@ def test_validate_dataset_structure_raises_listing_all_missing_classes(
         validate_dataset_structure(tmp_path)
 
     error_message = str(exc_info.value)
-    # All 18 missing class names must be mentioned
+    # All 15 missing class names must be mentioned
     for banana_class in ALL_CLASSES[3:]:
         assert banana_class.folder_name in error_message, (
             f"Expected missing class '{banana_class.folder_name}' to appear in "

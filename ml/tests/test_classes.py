@@ -22,8 +22,8 @@ from ml.classes import (
 # ---------------------------------------------------------------------------
 
 
-def test_all_seven_varieties_are_defined() -> None:
-    expected = {"Saba", "Bungulan", "Cavendish", "Lakatan", "Senorita", "Latundan", "Morado"}
+def test_all_six_varieties_are_defined() -> None:
+    expected = {"Cavendish", "Senorita", "Latundan", "Cordova", "Lakatan", "Saba"}
     assert {v.value for v in BananaVariety} == expected
 
 
@@ -42,9 +42,9 @@ def test_all_three_ripeness_stages_are_defined() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_all_classes_has_exactly_21_entries() -> None:
-    assert len(ALL_CLASSES) == 21
-    assert NUM_CLASSES == 21
+def test_all_classes_has_exactly_18_entries() -> None:
+    assert len(ALL_CLASSES) == 18
+    assert NUM_CLASSES == 18
 
 
 def test_all_classes_contains_no_duplicates() -> None:
@@ -120,8 +120,8 @@ def test_index_to_class_then_class_to_index_is_identity() -> None:
 
 def test_class_to_index_returns_correct_index_for_first_and_last_class() -> None:
     """Spot-check that the boundary entries resolve to the expected indices."""
-    first = BananaClass(BananaVariety.SABA, RipenessStage.UNRIPE)
-    last = BananaClass(BananaVariety.BUNGULAN, RipenessStage.OVERRIPE)
+    first = BananaClass(BananaVariety.CAVENDISH, RipenessStage.UNRIPE)
+    last = BananaClass(BananaVariety.SABA, RipenessStage.OVERRIPE)
     assert class_to_index(first) == 0
     assert class_to_index(last) == NUM_CLASSES - 1
 
@@ -154,13 +154,13 @@ def test_ripeness_stage_str_equals_value() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_generate_labels_file_creates_file_with_21_lines(tmp_path: Path) -> None:
+def test_generate_labels_file_creates_file_with_18_lines(tmp_path: Path) -> None:
     output = tmp_path / "labels.txt"
     result = generate_labels_file(output)
 
     assert result.is_file()
     lines = result.read_text(encoding="utf-8").strip().splitlines()
-    assert len(lines) == 21
+    assert len(lines) == 18
 
 
 def test_generate_labels_file_lines_match_all_classes_order(tmp_path: Path) -> None:

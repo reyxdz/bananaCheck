@@ -1,7 +1,7 @@
 """Banana variety and ripeness-stage taxonomy — single source of truth for
 the ML pipeline.
 
-All 21 class labels (7 varieties × 3 ripeness stages) are defined here.
+All 18 class labels (6 varieties × 3 ripeness stages) are defined here.
 Everything else in the codebase — dataset layout, model output indexing, and
 the ``labels.txt`` file bundled with the Flutter app — derives from this
 module so the two never drift apart.
@@ -19,15 +19,14 @@ from typing import NamedTuple
 
 
 class BananaVariety(StrEnum):
-    """Seven Philippine banana varieties recognised by the classifier."""
+    """Six Philippine banana varieties recognised by the classifier."""
 
-    SABA = "Saba"
-    LAKATAN = "Lakatan"
+    CAVENDISH = "Cavendish"
     SENORITA = "Senorita"
     LATUNDAN = "Latundan"
-    MORADO = "Morado"
-    CAVENDISH = "Cavendish"
-    BUNGULAN = "Bungulan"
+    CORDOVA = "Cordova"
+    LAKATAN = "Lakatan"
+    SABA = "Saba"
 
 
 class RipenessStage(StrEnum):
@@ -72,7 +71,7 @@ ALL_CLASSES: list[BananaClass] = [
     for ripeness in RipenessStage
 ]
 
-NUM_CLASSES: int = len(ALL_CLASSES)  # 21
+NUM_CLASSES: int = len(ALL_CLASSES)  # 18
 
 
 # ---------------------------------------------------------------------------
