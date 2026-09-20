@@ -117,8 +117,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content:
-                  Text('Couldn\'t clear your history — please try again.'),
+              content: Text('Couldn\'t clear your history — please try again.'),
             ),
           );
         }
