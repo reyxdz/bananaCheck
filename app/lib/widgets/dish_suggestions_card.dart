@@ -69,7 +69,7 @@ class DishSuggestionsCard extends StatelessWidget {
                     style: const TextStyle(
                       color: DesignTokens.primaryDark,
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: DesignTokens.bodyTextSize,
                     ),
                   ),
                 ),

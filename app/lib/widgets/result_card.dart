@@ -133,7 +133,7 @@ class ResultCard extends StatelessWidget {
                         style: const TextStyle(
                           color: DesignTokens.primaryDark,
                           fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                          fontSize: DesignTokens.bodyTextSize,
                         ),
                       ),
                     ],
@@ -143,11 +143,11 @@ class ResultCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _ripenessColor.withOpacity(0.12),
+                    color: _ripenessColor.withOpacity(DesignTokens.badgeBgOpacity),
                     borderRadius:
                         BorderRadius.circular(DesignTokens.radiusSmall),
                     border: Border.all(
-                      color: _ripenessColor.withOpacity(0.4),
+                      color: _ripenessColor.withOpacity(DesignTokens.badgeBorderOpacity),
                       width: 1,
                     ),
                   ),
@@ -165,7 +165,7 @@ class ResultCard extends StatelessWidget {
                         style: TextStyle(
                           color: _ripenessColor,
                           fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                          fontSize: DesignTokens.bodyTextSize,
                         ),
                       ),
                     ],
@@ -220,7 +220,7 @@ class ResultCard extends StatelessWidget {
                     child: Text(
                       _vendorRecommendation,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: DesignTokens.bodyTextSize,
                         fontWeight: FontWeight.w500,
                         color: DesignTokens.textSecondary,
                       ),
