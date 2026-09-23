@@ -146,6 +146,7 @@ All commands accept `--data-dir <path>` to override the default `ml/data/`.
 3. Re-run the report until it exits cleanly (exit code 0)
 4. Proceed to preprocessing (B6)
 
+
 ## Preprocessing Contract
 
 The app and ML implementation must share one written contract for input width
