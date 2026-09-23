@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.dataset_scaffold import (
     _VALID_IMAGE_EXTENSIONS,
@@ -13,7 +11,6 @@ from ml.dataset_scaffold import (
     dataset_stats,
     verify_structure,
 )
-
 
 # ---------------------------------------------------------------------------
 # create_class_folders
