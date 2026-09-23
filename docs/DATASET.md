@@ -105,6 +105,47 @@ Keep images from the same banana, burst, video, or collection session in one
 split. Otherwise near-duplicates can leak into evaluation and inflate reported
 accuracy.
 
+## Dataset Validation & Quality Checks
+
+Use `ml/dataset_organizer.py` to validate, audit, and report on the dataset
+before starting preprocessing (B6).
+
+### Full Report
+
+```bash
+python -m ml.dataset_organizer --report
+```
+
+Runs all checks and prints a single summary covering image counts, class
+balance, invalid images, duplicates, and stray files.
+
+### Individual Checks
+
+| Command | What it checks |
+|---------|----------------|
+| `--validate` | Opens every image with Pillow to detect corrupt or unreadable files |
+| `--duplicates` | Hashes all images (SHA-256) to find exact-content duplicates across classes |
+| `--balance` | Reports per-class counts, min/max/mean, and flags classes below 100 images |
+| `--clean` | Lists non-image files and hidden files inside class folders (dry-run only) |
+
+All commands accept `--data-dir <path>` to override the default `ml/data/`.
+
+### Minimum Requirements
+
+- **100 images per class** — classes below this threshold are flagged
+- **No empty classes** — the report exits non-zero when any class has 0 images
+- **No duplicate images** — identical files across classes inflate training
+  counts without adding information
+- **No stray files** — non-image files may confuse the preprocessing pipeline
+
+### Workflow
+
+1. Run `python -m ml.dataset_organizer --report` after populating images
+2. Address any flagged issues (remove duplicates, fill empty classes, delete
+   stray files)
+3. Re-run the report until it exits cleanly (exit code 0)
+4. Proceed to preprocessing (B6)
+
 ## Preprocessing Contract
 
 The app and ML implementation must share one written contract for input width
