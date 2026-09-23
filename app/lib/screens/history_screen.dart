@@ -6,7 +6,9 @@ import '../models/app_exception.dart';
 import '../models/scan_record.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
+import '../theme/ripeness_helpers.dart';
 import '../widgets/error_view.dart';
+import '../widgets/info_pill.dart';
 import 'results_screen.dart';
 
 /// Screen displaying past banana scan records saved in local storage.
@@ -28,8 +30,6 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   List<ScanRecord> _records = [];
   bool _isLoading = true;
-
-  /// Non-null when loading history failed (A16).
   AppException? _error;
 
   @override
@@ -45,23 +45,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() => _isLoading = true);
     try {
       final items = await service.getRecords();
       if (mounted) {
         setState(() {
           _records = items;
           _isLoading = false;
+          _error = null;
         });
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = const StorageException();
+          _error = AppException.from(e);
         });
       }
     }
@@ -70,18 +68,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _deleteItem(String id) async {
     final service = widget.storageService;
     if (service != null) {
-      try {
-        await service.deleteRecord(id);
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Couldn\'t delete this scan — please try again.'),
-            ),
-          );
-        }
-        return;
-      }
+      await service.deleteRecord(id);
     }
     await _loadHistory();
   }
@@ -111,18 +98,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
 
     if (confirmed == true && widget.storageService != null) {
-      try {
-        await widget.storageService!.clearRecords();
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Couldn\'t clear your history — please try again.'),
-            ),
-          );
-        }
-        return;
-      }
+      await widget.storageService!.clearRecords();
       await _loadHistory();
     }
   }
@@ -246,19 +222,6 @@ class _HistoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  Color _ripenessColor(String ripeness) {
-    switch (ripeness.toLowerCase()) {
-      case 'unripe':
-        return DesignTokens.ripenessUnripe;
-      case 'ripe':
-        return DesignTokens.ripenessRipe;
-      case 'overripe':
-        return DesignTokens.ripenessOverripe;
-      default:
-        return DesignTokens.primary;
-    }
-  }
-
   String _formatDate(DateTime dt) {
     final months = [
       'Jan',
@@ -284,7 +247,7 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _ripenessColor(record.result.ripeness);
+    final color = RipenessHelpers.colorFor(record.result.ripeness);
 
     return Card(
       elevation: 2,
@@ -299,8 +262,8 @@ class _HistoryCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
                 child: SizedBox(
-                  width: 64,
-                  height: 64,
+                  width: DesignTokens.primaryActionSize,
+                  height: DesignTokens.primaryActionSize,
                   child: Image.file(
                     File(record.imagePath),
                     fit: BoxFit.cover,
@@ -309,7 +272,7 @@ class _HistoryCard extends StatelessWidget {
                       child: const Icon(
                         Icons.eco,
                         color: DesignTokens.primary,
-                        size: 32,
+                        size: DesignTokens.iconLarge / 1.5,
                       ),
                     ),
                   ),
@@ -337,28 +300,18 @@ class _HistoryCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(DesignTokens.badgeBgOpacity),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        record.result.ripeness,
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                          fontSize: DesignTokens.bodyTextSize,
-                        ),
-                      ),
+                    const SizedBox(height: DesignTokens.spacingExtraSmall),
+                    InfoPill(
+                      icon: RipenessHelpers.iconFor(record.result.ripeness),
+                      label: record.result.ripeness,
+                      color: color,
+                      outlined: true,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: DesignTokens.spacingExtraSmall + 2),
                     Text(
                       _formatDate(record.scannedAt),
                       style: const TextStyle(
-                        fontSize: DesignTokens.bodyTextSize,
+                        fontSize: DesignTokens.captionTextSize,
                         color: DesignTokens.textSecondary,
                       ),
                     ),

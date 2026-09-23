@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import '../models/banana_info_data.dart';
 import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
+import '../theme/ripeness_helpers.dart';
 import 'confidence_indicator.dart';
 import 'dish_suggestions_card.dart';
 import 'health_benefits_card.dart';
+import 'info_pill.dart';
+import 'section_container.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -27,32 +30,6 @@ class ResultCard extends StatelessWidget {
   /// Null in widget tests where no actual file exists.
   final String? imagePath;
 
-  IconData get _ripenessIcon {
-    switch (result.ripeness.toLowerCase()) {
-      case 'unripe':
-        return Icons.hourglass_top_rounded;
-      case 'ripe':
-        return Icons.check_circle_rounded;
-      case 'overripe':
-        return Icons.warning_rounded;
-      default:
-        return Icons.eco_rounded;
-    }
-  }
-
-  Color get _ripenessColor {
-    switch (result.ripeness.toLowerCase()) {
-      case 'unripe':
-        return DesignTokens.ripenessUnripe;
-      case 'ripe':
-        return DesignTokens.ripenessRipe;
-      case 'overripe':
-        return DesignTokens.ripenessOverripe;
-      default:
-        return DesignTokens.primary;
-    }
-  }
-
   String get _vendorRecommendation {
     switch (result.ripeness.toLowerCase()) {
       case 'unripe':
@@ -68,6 +45,9 @@ class ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ripenessColor = RipenessHelpers.colorFor(result.ripeness);
+    final ripenessIcon = RipenessHelpers.iconFor(result.ripeness);
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -111,67 +91,16 @@ class ResultCard extends StatelessWidget {
               spacing: DesignTokens.spacingSmall,
               runSpacing: DesignTokens.spacingSmall,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: DesignTokens.primaryLight,
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.eco,
-                        color: DesignTokens.primaryDark,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        result.variety,
-                        style: const TextStyle(
-                          color: DesignTokens.primaryDark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: DesignTokens.bodyTextSize,
-                        ),
-                      ),
-                    ],
-                  ),
+                InfoPill(
+                  icon: Icons.eco,
+                  label: result.variety,
+                  color: DesignTokens.primary,
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color:
-                        _ripenessColor.withOpacity(DesignTokens.badgeBgOpacity),
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                    border: Border.all(
-                      color: _ripenessColor
-                          .withOpacity(DesignTokens.badgeBorderOpacity),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _ripenessIcon,
-                        color: _ripenessColor,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        result.ripeness,
-                        style: TextStyle(
-                          color: _ripenessColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: DesignTokens.bodyTextSize,
-                        ),
-                      ),
-                    ],
-                  ),
+                InfoPill(
+                  icon: ripenessIcon,
+                  label: result.ripeness,
+                  color: ripenessColor,
+                  outlined: true,
                 ),
               ],
             ),
@@ -203,26 +132,20 @@ class ResultCard extends StatelessWidget {
             const SizedBox(height: DesignTokens.spacingMedium),
 
             // ── Farmer/Vendor Handling Advice Card ──
-            Container(
-              padding: const EdgeInsets.all(DesignTokens.spacingMedium),
-              decoration: BoxDecoration(
-                color: DesignTokens.background,
-                borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
-                border: Border.all(color: DesignTokens.border, width: 1),
-              ),
+            SectionContainer(
               child: Row(
                 children: [
                   const Icon(
                     Icons.tips_and_updates_outlined,
                     color: DesignTokens.accent,
-                    size: 22,
+                    size: DesignTokens.iconTip,
                   ),
                   const SizedBox(width: DesignTokens.spacingSmall),
                   Expanded(
                     child: Text(
                       _vendorRecommendation,
                       style: const TextStyle(
-                        fontSize: DesignTokens.bodyTextSize,
+                        fontSize: DesignTokens.chipTextSize,
                         fontWeight: FontWeight.w500,
                         color: DesignTokens.textSecondary,
                       ),

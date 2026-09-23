@@ -23,9 +23,7 @@ abstract final class DesignTokens {
   static const Color confidenceHigh = Color(0xFF2E7D32); // Green
   static const Color confidenceMedium = Color(0xFFF57F17); // Amber
   static const Color confidenceLow = Color(0xFFD32F2F); // Red
-
-  // Error colors
-  static const Color errorBackground = Color(0xFFFFF3F0); // Soft warm tint
+  static const Color errorBackground = Color(0xFFFDE8E8); // Light red bg
 
   // Overlays & Opacities
   static const Color overlayDark = Color(0x7D000000); // Camera bottom gradient
@@ -61,8 +59,28 @@ abstract final class DesignTokens {
   static const double imageThumbnailSize = 200;
 
   // Type Scale
+  static const double captionTextSize = 12;
+  static const double chipTextSize = 13;
+  static const double pillTextSize = 14;
   static const double bodyTextSize = 16;
   static const double subheadingTextSize = 18;
   static const double headingTextSize = 24;
   static const double resultHeadlineSize = 28;
+
+  // Chip / Pill Padding
+  static const double chipPaddingHorizontal = 12;
+  static const double chipPaddingVertical = 6;
+
+  // Icon Sizes — small
+  static const double iconSmall = 16;
+  static const double iconDefault = 20;
+  static const double iconTip = 22;
+
+  // Card Section
+  static const double sectionBorderWidth = 1;
+
+  // Camera Reticle
+  static const double reticleWidth = 250;
+  static const double reticleHeight = 330;
+  static const double reticleBorderWidth = 2.5;
 }

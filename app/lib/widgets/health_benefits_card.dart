@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/banana_info_data.dart';
 import '../theme/design_tokens.dart';
+import 'section_container.dart';
 
 /// Displays health benefits for a scanned banana variety per §7.6.
 ///
@@ -26,13 +27,7 @@ class HealthBenefitsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ripenessInfo = info.byRipeness[ripeness];
 
-    return Container(
-      padding: const EdgeInsets.all(DesignTokens.spacingMedium),
-      decoration: BoxDecoration(
-        color: DesignTokens.background,
-        borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
-        border: Border.all(color: DesignTokens.border, width: 1),
-      ),
+    return SectionContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -43,7 +38,7 @@ class HealthBenefitsCard extends StatelessWidget {
               Icon(
                 Icons.favorite_rounded,
                 color: DesignTokens.primary,
-                size: 20,
+                size: DesignTokens.iconDefault,
               ),
               SizedBox(width: DesignTokens.spacingSmall),
               Text(
@@ -98,7 +93,7 @@ class _BenefitRow extends StatelessWidget {
             child: Icon(
               Icons.eco_rounded,
               color: DesignTokens.primary,
-              size: 14,
+              size: DesignTokens.pillTextSize,
             ),
           ),
           const SizedBox(width: DesignTokens.spacingSmall),
@@ -106,7 +101,7 @@ class _BenefitRow extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: DesignTokens.bodyTextSize,
+                fontSize: DesignTokens.chipTextSize,
                 fontWeight: FontWeight.w500,
                 color: DesignTokens.textSecondary,
               ),
