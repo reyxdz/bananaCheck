@@ -40,9 +40,7 @@ class InfoPill extends StatelessWidget {
         vertical: DesignTokens.chipPaddingVertical,
       ),
       decoration: BoxDecoration(
-        color: outlined
-            ? color.withOpacity(0.12)
-            : DesignTokens.primaryLight,
+        color: outlined ? color.withOpacity(0.12) : DesignTokens.primaryLight,
         borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
         border: outlined
             ? Border.all(
