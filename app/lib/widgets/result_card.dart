@@ -143,11 +143,13 @@ class ResultCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _ripenessColor.withOpacity(DesignTokens.badgeBgOpacity),
+                    color:
+                        _ripenessColor.withOpacity(DesignTokens.badgeBgOpacity),
                     borderRadius:
                         BorderRadius.circular(DesignTokens.radiusSmall),
                     border: Border.all(
-                      color: _ripenessColor.withOpacity(DesignTokens.badgeBorderOpacity),
+                      color: _ripenessColor
+                          .withOpacity(DesignTokens.badgeBorderOpacity),
                       width: 1,
                     ),
                   ),

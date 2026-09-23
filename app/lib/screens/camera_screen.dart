@@ -466,7 +466,8 @@ class _LivePreview extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: DesignTokens.primaryDark.withOpacity(DesignTokens.reticleBgOpacity),
+                        color: DesignTokens.primaryDark
+                            .withOpacity(DesignTokens.reticleBgOpacity),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(

@@ -152,7 +152,8 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
         // Semi-transparent overlay.
         Positioned.fill(
           child: ColoredBox(
-            color: DesignTokens.background.withOpacity(DesignTokens.analyzingOverlayOpacity),
+            color: DesignTokens.background
+                .withOpacity(DesignTokens.analyzingOverlayOpacity),
           ),
         ),
 
