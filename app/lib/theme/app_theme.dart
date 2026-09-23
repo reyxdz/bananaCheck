@@ -73,7 +73,7 @@ abstract final class AppTheme {
         backgroundColor: DesignTokens.primaryLight,
         labelStyle: const TextStyle(
           color: DesignTokens.primaryDark,
-          fontSize: 14,
+          fontSize: DesignTokens.bodyTextSize,
           fontWeight: FontWeight.w700,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

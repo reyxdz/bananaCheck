@@ -329,7 +329,7 @@ class _HistoryCard extends StatelessWidget {
                             '${record.result.variety} — ${record.result.ripeness}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: DesignTokens.bodyTextSize,
                               color: DesignTokens.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -342,7 +342,7 @@ class _HistoryCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(0.12),
+                        color: color.withOpacity(DesignTokens.badgeBgOpacity),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -350,7 +350,7 @@ class _HistoryCard extends StatelessWidget {
                         style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontSize: DesignTokens.bodyTextSize,
                         ),
                       ),
                     ),
@@ -358,7 +358,7 @@ class _HistoryCard extends StatelessWidget {
                     Text(
                       _formatDate(record.scannedAt),
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: DesignTokens.bodyTextSize,
                         color: DesignTokens.textSecondary,
                       ),
                     ),

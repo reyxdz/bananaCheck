@@ -454,7 +454,7 @@ class _LivePreview extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.85),
+                  color: DesignTokens.overlayWhite,
                   width: 2.5,
                 ),
               ),
@@ -466,7 +466,8 @@ class _LivePreview extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: DesignTokens.primaryDark.withOpacity(0.6),
+                        color: DesignTokens.primaryDark
+                            .withOpacity(DesignTokens.reticleBgOpacity),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -491,7 +492,7 @@ class _LivePreview extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0x7D000000)],
+                  colors: [Colors.transparent, DesignTokens.overlayDark],
                 ),
               ),
               padding: const EdgeInsets.symmetric(
@@ -526,7 +527,7 @@ class _LivePreview extends StatelessWidget {
           // Shutter flash — white overlay that appears briefly on capture.
           if (showShutterFlash)
             const Positioned.fill(
-              child: ColoredBox(color: Colors.white70),
+              child: ColoredBox(color: DesignTokens.shutterFlash),
             ),
         ],
       ),

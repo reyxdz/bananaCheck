@@ -106,7 +106,7 @@ class _BenefitRow extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: DesignTokens.bodyTextSize,
                 fontWeight: FontWeight.w500,
                 color: DesignTokens.textSecondary,
               ),
