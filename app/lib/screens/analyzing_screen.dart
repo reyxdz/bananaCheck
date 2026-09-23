@@ -4,18 +4,24 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
+import '../models/app_exception.dart';
 import '../models/classification_result.dart';
 import '../models/scan_record.dart';
 import '../services/inference_service.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
+import '../widgets/error_view.dart';
+
+/// Confidence threshold below which the result is treated as unreliable
+/// and the user is shown a "Couldn't tell clearly" error instead.
+const double _lowConfidenceThreshold = 0.5;
 
 /// Full-screen "Analyzing…" state shown between capture and results (A15).
 ///
 /// Immediately kicks off [InferenceService.classify] + [StorageService.saveRecord]
 /// on creation. Displays a friendly loading UI while the work happens, then
 /// calls [onComplete] with the result. On failure, shows a plain-language
-/// error with a large "Try Again" button.
+/// error with a large "Try Again" button (A16).
 class AnalyzingScreen extends StatefulWidget {
   const AnalyzingScreen({
     required this.inferenceService,
@@ -39,8 +45,8 @@ class AnalyzingScreen extends StatefulWidget {
 }
 
 class _AnalyzingScreenState extends State<AnalyzingScreen> {
-  /// Non-null when the async pipeline failed — shown as a friendly message.
-  String? _error;
+  /// Non-null when the async pipeline failed — determines the error UI.
+  AppException? _error;
 
   @override
   void initState() {
@@ -55,28 +61,61 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
     }
 
     try {
-      final result =
-          await widget.inferenceService.classify(widget.capturedFile);
+      // 1. Run inference.
+      final ClassificationResult result;
+      try {
+        result = await widget.inferenceService.classify(widget.capturedFile);
+      } on AppException catch (e) {
+        // The service threw a structured error — use it directly.
+        if (!mounted) return;
+        setState(() => _error = e);
+        return;
+      } catch (_) {
+        // Unknown inference failure — classify as image processing issue.
+        if (!mounted) return;
+        setState(() => _error = const ImageProcessingException());
+        return;
+      }
+
       if (!mounted) return;
 
-      // Persist the scan record (A12).
-      final record = ScanRecord(
-        id: const Uuid().v4(),
-        imagePath: widget.capturedFile.path,
-        result: result,
-        scannedAt: DateTime.now(),
-      );
-      await widget.storageService.saveRecord(record);
+      // 2. Low-confidence gate — treat as an error per §7.3.
+      if (result.confidence < _lowConfidenceThreshold) {
+        setState(() => _error = const LowConfidenceException());
+        return;
+      }
+
+      // 3. Persist the scan record (A12).
+      try {
+        final record = ScanRecord(
+          id: const Uuid().v4(),
+          imagePath: widget.capturedFile.path,
+          result: result,
+          scannedAt: DateTime.now(),
+        );
+        await widget.storageService.saveRecord(record);
+      } catch (_) {
+        // Storage failed but classification succeeded — still show results,
+        // just notify the user that saving didn't work.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Your result is ready, but we couldn\'t save it to history.',
+              ),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
 
       if (!mounted) return;
 
       widget.onComplete(result, widget.capturedFile.path);
     } catch (e) {
+      // Catch-all for anything unexpected.
       if (!mounted) return;
-      setState(() {
-        _error = 'Something went wrong while analyzing your banana. '
-            'Please try again.';
-      });
+      setState(() => _error = AppException.from(e));
     }
   }
 
@@ -113,7 +152,8 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
         // Semi-transparent overlay.
         Positioned.fill(
           child: ColoredBox(
-            color: DesignTokens.background.withOpacity(0.75),
+            color: DesignTokens.background
+                .withOpacity(DesignTokens.analyzingOverlayOpacity),
           ),
         ),
 
@@ -179,75 +219,14 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
     );
   }
 
-  // ── Error state ────────────────────────────────────────────────────────
+  // ── Error state (A16) ─────────────────────────────────────────────────
 
   Widget _buildError() {
-    return Center(
-      child: Padding(
-        padding:
-            const EdgeInsets.symmetric(horizontal: DesignTokens.spacingLarge),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              color: DesignTokens.confidenceLow,
-              size: DesignTokens.iconLarge,
-            ),
-
-            const SizedBox(height: DesignTokens.spacingLarge),
-
-            Text(
-              _error!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: DesignTokens.bodyTextSize,
-                fontWeight: FontWeight.w600,
-                color: DesignTokens.textPrimary,
-              ),
-            ),
-
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-
-            // Large retry button — per §7.1 single primary action.
-            SizedBox(
-              width: double.infinity,
-              height: DesignTokens.primaryActionSize,
-              child: ElevatedButton.icon(
-                onPressed: _runClassification,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DesignTokens.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusMedium),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: DesignTokens.bodyTextSize,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
-              ),
-            ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // Back to camera.
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'Go back to camera',
-                style: TextStyle(
-                  fontSize: DesignTokens.bodyTextSize,
-                  color: DesignTokens.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return ErrorView(
+      exception: _error!,
+      onRetry: _runClassification,
+      secondaryLabel: 'Go back to camera',
+      onSecondary: () => Navigator.of(context).pop(),
     );
   }
 }
