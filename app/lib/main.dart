@@ -18,9 +18,7 @@ void main() async {
 
   runApp(
     BananaClassifierApp(
-      inferenceService: MockInferenceService(
-        delay: const Duration(milliseconds: 800),
-      ),
+      inferenceService: MockInferenceService(),
       storageService: storageService,
     ),
   );
@@ -73,8 +71,8 @@ class _HomeScreen extends StatelessWidget {
     );
   }
 
-  /// A15: Navigate to [AnalyzingScreen] which handles classify + save,
-  /// then forwards to [ResultsScreen] on completion.
+  /// Navigate to the AnalyzingScreen which handles classification, storage,
+  /// and then forwards to ResultsScreen on success (A15 + A12).
   void _handleScan(BuildContext context, File capturedFile) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -83,8 +81,7 @@ class _HomeScreen extends StatelessWidget {
           storageService: storageService,
           capturedFile: capturedFile,
           onComplete: (result, imagePath) {
-            // Replace the AnalyzingScreen with ResultsScreen so pressing
-            // "back" returns to the camera, not the analyzing screen.
+            // Replace the AnalyzingScreen with the ResultsScreen.
             Navigator.of(context).pushReplacement(
               MaterialPageRoute<void>(
                 builder: (_) => ResultsScreen(

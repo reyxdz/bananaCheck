@@ -4,9 +4,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../models/app_exception.dart';
 import '../theme/design_tokens.dart';
-import '../widgets/error_view.dart';
 import '../widgets/primary_button.dart';
 
 /// Camera permission status as seen by the screen UI.
@@ -216,8 +214,14 @@ class _CameraScreenState extends State<CameraScreen>
       widget.onScan(capturedFile);
     } catch (e) {
       if (!mounted) return;
-      // Show a modal bottom sheet with the error so it isn't missed (A16).
-      _showCaptureError();
+      // Plain-language error per §7.3.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not take the photo — please try again.',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isCapturing = false);
     }
@@ -226,31 +230,6 @@ class _CameraScreenState extends State<CameraScreen>
   void _disposeCamera() {
     _cameraController?.dispose();
     _cameraController = null;
-  }
-
-  /// Shows a non-dismissable bottom sheet with a plain-language capture error.
-  void _showCaptureError() {
-    showModalBottomSheet<void>(
-      context: context,
-      isDismissible: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(DesignTokens.radiusLarge),
-        ),
-      ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: DesignTokens.spacingExtraLarge,
-        ),
-        child: ErrorView(
-          exception: const AppCameraException(),
-          retryLabel: 'Try Again',
-          onRetry: () {
-            Navigator.of(sheetContext).pop();
-          },
-        ),
-      ),
-    );
   }
 
   // ─────────────────────────── build ───────────────────────────────────
@@ -449,13 +428,13 @@ class _LivePreview extends StatelessWidget {
           // Center target reticle frame to help farmers align the banana
           Center(
             child: Container(
-              width: 250,
-              height: 330,
+              width: DesignTokens.reticleWidth,
+              height: DesignTokens.reticleHeight,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.85),
-                  width: 2.5,
+                  width: DesignTokens.reticleBorderWidth,
                 ),
               ),
               child: Stack(
@@ -472,7 +451,7 @@ class _LivePreview extends StatelessWidget {
                       child: const Icon(
                         Icons.center_focus_weak,
                         color: DesignTokens.accent,
-                        size: 24,
+                        size: DesignTokens.headingTextSize,
                       ),
                     ),
                   ),
@@ -504,7 +483,7 @@ class _LivePreview extends StatelessWidget {
                   Icon(
                     Icons.center_focus_strong,
                     color: DesignTokens.accent,
-                    size: 20,
+                    size: DesignTokens.iconDefault,
                   ),
                   SizedBox(width: DesignTokens.spacingSmall),
                   Expanded(
@@ -641,9 +620,38 @@ class _CameraErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ErrorView(
-      exception: const AppCameraException(),
-      onRetry: onRetry,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: DesignTokens.spacingLarge,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: DesignTokens.textSecondary,
+              size: DesignTokens.iconLarge,
+            ),
+            const SizedBox(height: DesignTokens.spacingLarge),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: DesignTokens.spacingExtraLarge),
+            SizedBox(
+              width: double.infinity,
+              height: DesignTokens.primaryActionSize,
+              child: PrimaryButton(
+                icon: Icons.refresh,
+                label: 'Try Again',
+                onPressed: onRetry,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
