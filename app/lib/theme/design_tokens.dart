@@ -49,8 +49,28 @@ abstract final class DesignTokens {
   static const double imageThumbnailSize = 200;
 
   // Type Scale
+  static const double captionTextSize = 12;
+  static const double chipTextSize = 13;
+  static const double pillTextSize = 14;
   static const double bodyTextSize = 16;
   static const double subheadingTextSize = 18;
   static const double headingTextSize = 24;
   static const double resultHeadlineSize = 28;
+
+  // Chip / Pill Padding
+  static const double chipPaddingHorizontal = 12;
+  static const double chipPaddingVertical = 6;
+
+  // Icon Sizes — small
+  static const double iconSmall = 16;
+  static const double iconDefault = 20;
+  static const double iconTip = 22;
+
+  // Card Section
+  static const double sectionBorderWidth = 1;
+
+  // Camera Reticle
+  static const double reticleWidth = 250;
+  static const double reticleHeight = 330;
+  static const double reticleBorderWidth = 2.5;
 }
