@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/banana_info_data.dart';
 import '../theme/design_tokens.dart';
+import 'section_container.dart';
 
 /// Displays ripeness-aware dish suggestions as styled chips per §7.6.
 ///
@@ -15,13 +16,7 @@ class DishSuggestionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(DesignTokens.spacingMedium),
-      decoration: BoxDecoration(
-        color: DesignTokens.background,
-        borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
-        border: Border.all(color: DesignTokens.border, width: 1),
-      ),
+    return SectionContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -32,7 +27,7 @@ class DishSuggestionsCard extends StatelessWidget {
               Icon(
                 Icons.restaurant_rounded,
                 color: DesignTokens.accent,
-                size: 20,
+                size: DesignTokens.iconDefault,
               ),
               SizedBox(width: DesignTokens.spacingSmall),
               Text(
@@ -56,8 +51,8 @@ class DishSuggestionsCard extends StatelessWidget {
               for (final dish in ripenessInfo.dishSuggestions)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: DesignTokens.chipPaddingHorizontal,
+                    vertical: DesignTokens.chipPaddingVertical,
                   ),
                   decoration: BoxDecoration(
                     color: DesignTokens.primaryLight,
@@ -69,7 +64,7 @@ class DishSuggestionsCard extends StatelessWidget {
                     style: const TextStyle(
                       color: DesignTokens.primaryDark,
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: DesignTokens.chipTextSize,
                     ),
                   ),
                 ),

@@ -152,7 +152,8 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
         // Semi-transparent overlay.
         Positioned.fill(
           child: ColoredBox(
-            color: DesignTokens.background.withOpacity(0.75),
+            color: DesignTokens.background
+                .withOpacity(DesignTokens.analyzingOverlayOpacity),
           ),
         ),
 
@@ -166,13 +167,13 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
                 borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 child: Image.asset(
                   'assets/images/logo.png',
-                  width: 64,
-                  height: 64,
+                  width: DesignTokens.primaryActionSize,
+                  height: DesignTokens.primaryActionSize,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const Icon(
                     Icons.eco_rounded,
                     color: DesignTokens.primary,
-                    size: 64,
+                    size: DesignTokens.primaryActionSize,
                   ),
                 ),
               ),
@@ -181,8 +182,8 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
 
               // Spinner.
               const SizedBox(
-                width: 48,
-                height: 48,
+                width: DesignTokens.minimumTouchTarget,
+                height: DesignTokens.minimumTouchTarget,
                 child: CircularProgressIndicator(
                   strokeWidth: 4,
                   color: DesignTokens.primary,
