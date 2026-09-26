@@ -8,18 +8,14 @@ from PIL import Image
 
 from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.dataset_organizer import (
-    ClassBalanceReport,
-    DuplicateGroup,
-    StrayFile,
+    _MIN_IMAGES_PER_CLASS,
     compute_class_balance,
     find_duplicates,
     find_stray_files,
     generate_report,
     validate_image,
-    _MIN_IMAGES_PER_CLASS,
 )
 from ml.dataset_scaffold import create_class_folders
-
 
 # ---------------------------------------------------------------------------
 # Helpers
