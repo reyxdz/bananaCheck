@@ -676,7 +676,7 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 **Marc Paul**
 - [ ] B6 — Preprocessing pipeline (resize, augment, normalize)
-- [ ] B7 — Train/validation/test split
+- [x] B7 — Train/validation/test split
 - [ ] B8 — Baseline model training (MobileNetV2 transfer learning) — started
 
 **Rey (monitor)**
