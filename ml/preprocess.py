@@ -17,7 +17,7 @@ The output contract matches ``ml.inference_contract``:
 from __future__ import annotations
 
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
@@ -109,11 +109,12 @@ class AugmentConfig:
                 raise ValueError(
                     "contrast_range must be (lo, hi) with 0 < lo <= hi."
                 )
-        if self.random_crop_fraction is not None:
-            if not (0.0 < self.random_crop_fraction <= 1.0):
-                raise ValueError(
-                    "random_crop_fraction must be in (0, 1]."
-                )
+        if self.random_crop_fraction is not None and not (
+            0.0 < self.random_crop_fraction <= 1.0
+        ):
+            raise ValueError(
+                "random_crop_fraction must be in (0, 1]."
+            )
 
     @property
     def is_enabled(self) -> bool:
@@ -344,10 +345,7 @@ def preprocess_image(
 
     img = resize_image(img, cfg)
 
-    if cfg.normalize:
-        arr = normalize_image(img)
-    else:
-        arr = np.asarray(img, dtype=np.float32)
+    arr = normalize_image(img) if cfg.normalize else np.asarray(img, dtype=np.float32)
 
     return PreprocessedImage(array=arr, source_path=path.resolve())
 

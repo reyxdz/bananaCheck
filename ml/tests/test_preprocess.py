@@ -10,8 +10,8 @@ from PIL import Image
 
 from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.preprocess import (
-    AugmentConfig,
     DEFAULT_AUGMENT,
+    AugmentConfig,
     PreprocessConfig,
     PreprocessedImage,
     augment_image,
@@ -23,7 +23,6 @@ from ml.preprocess import (
     resize_image,
     validate_dataset_structure,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
