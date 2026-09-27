@@ -24,10 +24,12 @@ banana-classifier/
 │   │   ├── screens/
 │   │   │   ├── camera_screen.dart
 │   │   │   ├── results_screen.dart
-│   │   │   └── history_screen.dart
+│   │   │   ├── history_screen.dart
+│   │   │   └── onboarding_screen.dart  # first-time swipeable tutorial (§7.7)
 │   │   ├── services/
 │   │   │   ├── inference_service.dart   # TFLite wrapper
-│   │   │   └── storage_service.dart     # sqflite/Hive wrapper
+│   │   │   ├── storage_service.dart     # sqflite/Hive wrapper
+│   │   │   └── preferences_service.dart # shared_preferences wrapper for first-launch flag (§7.7)
 │   │   ├── models/
 │   │   │   ├── classification_result.dart
 │   │   │   ├── scan_record.dart
@@ -51,12 +53,22 @@ banana-classifier/
 │   ├── requirements.txt
 │   └── tests/
 │
-├── backend/                     # FastAPI — retraining/model-mgmt only
+├── backend/                     # FastAPI — DEV/TESTING ONLY (never shipped, app never calls this)
 │   ├── app/
-│   │   ├── main.py
+│   │   ├── main.py              # FastAPI entry point, CORS, lifespan
 │   │   ├── routers/
-│   │   └── services/
+│   │   │   ├── classify.py      # POST /classify — batch-test model with images
+│   │   │   └── health.py        # GET /health — service health check
+│   │   ├── services/
+│   │   │   ├── inference.py     # Loads TFLite/Keras model, runs prediction
+│   │   │   └── preprocessing.py # Same resize/normalize logic as ml/preprocess.py
+│   │   ├── models/
+│   │   │   └── schemas.py       # Pydantic schemas mirroring ClassificationResult
+│   │   └── config.py            # Model path, class labels, confidence thresholds
 │   ├── tests/
+│   │   ├── test_classify.py     # /classify endpoint tests
+│   │   ├── test_health.py       # /health endpoint test
+│   │   └── test_preprocessing.py # Shared preprocessing unit tests
 │   └── requirements.txt
 │
 ├── docs/
@@ -360,10 +372,11 @@ pytest
 
 ### 7.1 Core principle: fewest taps possible
 
-- **Target: app open → result shown in 2 taps maximum** — (1) tap capture button, (2) nothing else; result appears automatically after processing. No confirmation dialogs, no "are you sure you want to scan?" steps.
-- **No multi-step wizards, no onboarding tutorial screens** on first launch. If guidance is needed, use a single unobtrusive overlay hint on the camera screen itself (e.g. "Point at banana and tap"), dismissible and never shown again — not a separate tutorial flow.
+- **Target: app open → result shown in 2 taps maximum** — (1) tap capture button or pick from gallery, (2) nothing else; result appears automatically after processing. No confirmation dialogs, no "are you sure you want to scan?" steps.
+- **Minimal first-launch onboarding only (§7.7):** a swipeable 3–4 page introduction shown **only once** on first install to teach farmers how to use the app. Must be skippable and never shown again after completion. Beyond this one-time flow, no multi-step wizards or tutorial screens.
 - **No hamburger menus, no nested navigation, no settings screens buried behind icons.** If history is included, it should be one tap away from the camera screen (a single visible icon/button), not inside a menu.
-- **One primary action per screen.** The camera screen has exactly one button that matters: capture. The results screen has exactly one primary action: scan again.
+- **Two input methods on the camera screen:** the primary capture button **and** a secondary "Upload Photo" button for picking an existing image from the device gallery (§7.8). Both funnel into the same analysis pipeline.
+- **One primary action per screen.** The camera screen has exactly one primary button that matters: capture. The "Upload Photo" button is a clearly secondary action. The results screen has exactly one primary action: scan again.
 
 ### 7.2 Visual style
 
@@ -465,6 +478,56 @@ const bananaInfoMap = <String, BananaInfo>{
 - Both cards appear inside `ResultCard`, below the existing confidence indicator and vendor advice sections. They render only when a `BananaInfo` entry exists for the scanned variety and the ripeness key is present.
 - When a variety entry exists but the specific ripeness key is missing, show only the `generalBenefits` and hide the dish suggestions card gracefully.
 
+### 7.7 Onboarding — First-Time Tutorial (Swipeable)
+
+A lightweight, swipeable onboarding flow shown **only on the user's very first launch** of the app. Designed for farmers/vendors who may never have used a classification app before.
+
+#### Behavior rules
+
+- **Shown once only.** On first launch, the app checks a `bool` flag in `shared_preferences` (`has_completed_onboarding`). If `false` or absent → show onboarding. After the user completes or skips it → set flag to `true`, never show again.
+- **Skippable.** A visible "Skip" button must be present on every page so experienced users can jump straight to the camera screen.
+- **3–4 pages maximum.** Each page is a single full-screen illustration/icon + a short headline + one sentence of plain-language explanation. No walls of text.
+- **Swipe-based navigation** with dot indicators at the bottom. Final page has a "Get Started" button that navigates to the camera screen.
+- **No login, no account creation, no data collection.** This is purely instructional.
+
+#### Suggested onboarding pages
+
+| Page | Headline | Description |
+|---|---|---|
+| 1 | Welcome to Bananalyze! | Find out what banana you have — just point and scan. |
+| 2 | Point and Scan | Aim your camera at a banana and tap the Scan button. |
+| 3 | Upload a Photo | Already have a photo? Tap "Upload" to pick one from your gallery. |
+| 4 | Get Your Results | See the variety, ripeness, health benefits, and dish ideas instantly. |
+
+#### Implementation
+
+- **File:** `lib/screens/onboarding_screen.dart`
+- **Preferences service:** `lib/services/preferences_service.dart` — wraps `shared_preferences` to read/write the `has_completed_onboarding` flag.
+- **Navigation:** `main.dart` checks the flag at startup. If onboarding is needed, push `OnboardingScreen` before `CameraScreen`. After completion, navigate to camera and clear the backstack so the user can't swipe back to onboarding.
+- **Design:** uses `DesignTokens` for all colors/spacing/typography (§7.5). Each page uses a large centered icon or illustration + headline + description. Dot indicators use `DesignTokens.primary` for the active dot.
+
+### 7.8 Upload Image from Gallery
+
+A secondary input method that lets users pick an existing photo from their device's gallery instead of capturing a live photo. Useful when:
+- The user already photographed the banana earlier
+- The camera is not working or unavailable
+- The user wants to analyze a photo someone sent them
+
+#### Behavior rules
+
+- **Secondary action, not primary.** The capture button remains the dominant, largest element on the camera screen per §7.1. The upload button is smaller and visually secondary — positioned below or beside the capture button.
+- **Icon + label per §7.2.** The button shows a gallery/photo icon **and** the label "Upload" or "Upload Photo" — never icon-only.
+- **Same analysis pipeline.** After the user picks an image, it feeds into the same `InferenceService.classify(File)` call as a camera capture. The results screen is identical regardless of input source.
+- **Platform image picker.** Uses the `image_picker` package to open the device's native gallery picker. No custom gallery UI needed.
+- **Graceful error handling.** If the user cancels the picker, nothing happens (no error, no navigation). If the picked file is invalid or too large, show a plain-language error per §7.3.
+- **File size / format.** Accept common image formats (JPEG, PNG). If the image is extremely large, resize it before inference to match the model's expected input size (handled by the preprocessing step in `InferenceService`).
+
+#### Implementation
+
+- **Package:** `image_picker` (add to `pubspec.yaml`)
+- **UI:** Add an "Upload Photo" button to `CameraScreen`, visually secondary to the capture button. Suggested placement: below the capture button, or as a smaller text button with an icon.
+- **Flow:** `image_picker` → `File` → `widget.onScan(file)` — same callback as camera capture, so the entire downstream flow (analyzing screen → results screen → save to history) works identically.
+
 ---
 
 ## 8. Role Split (2 developers + 1 project owner/monitor)
@@ -547,15 +610,22 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | A19 | Widget tests — results screen | 1 day | Wk 6 | A10 |
 | A20 | Widget tests — history screen | 1 day | Wk 6 | A14 |
 | A29 | Widget tests — `HealthBenefitsCard` + `DishSuggestionsCard` + updated `ResultCard` | 1 day | Wk 6 | A28 |
+| A30 | Onboarding screen — swipeable first-time tutorial (§7.7) | 1.5 days | Wk 6 | A2 |
+| A31 | `PreferencesService` + first-launch flag (`has_completed_onboarding`) | 0.5 day | Wk 6 | A30 |
+| A32 | Wire onboarding into `main.dart` — show on first launch, skip thereafter | 0.5 day | Wk 6 | A31 |
+| A33 | Upload image from gallery — `image_picker` integration on camera screen (§7.8) | 1 day | Wk 6 | A7 |
+| A34 | Widget tests — onboarding screen + upload image button | 1 day | Wk 6 | A30, A33 |
 | A21 | **Integration:** swap `MockInferenceService` → real `TFLiteInferenceService` | 1 day | Wk 7 | B13 (Marc Paul) |
-| A22 | Device testing on physical Android phone(s), including outdoor sunlight readability gitcheck (§7.4) | 2 days | Wk 7 | A21 |
+| A22 | Device testing on physical Android phone(s), including outdoor sunlight readability check (§7.4) | 2 days | Wk 7 | A21 |
 | A23 | Bug fixes from device testing | 2 days | Wk 7–8 | A22 |
 | A24 | Final UI/UX pass + buffer | 2 days | Wk 8 | A23 |
 
 
-**Track A total: ~31.5 days** (~6.3 weeks of work spread across 8 calendar weeks — still fits with built-in slack)
+**Track A total: ~36.5 days** (~7.3 weeks of work spread across 8 calendar weeks — tight but fits with parallel execution during Wk 6)
 
-### Track B — Marc Paul (Dataset / Model / ML Layer)
+### Track B — Marc Paul (Dataset / Model / ML Layer + Dev Backend)
+
+> **⚠️ OFFLINE-ONLY RULE:** The shipped app **never** calls the backend at runtime. All classification happens on-device via TFLite. The backend exists **only** as a developer testing tool — it lets Marc Paul batch-test the model with images via `curl`/Postman without building the Flutter app, and ensures the Python preprocessing stays in sync with the Dart preprocessing.
 
 | # | Feature | Est. Time | Week | Depends on |
 |---|---|---|---|---|
@@ -574,11 +644,31 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | B13 | Implement real `TFLiteInferenceService` in Dart (`tflite_flutter`) matching interface (B3) | 3 days | Wk 6–7 | B12, A4 |
 | B14 | Unit tests — preprocessing pipeline | 1 day | Wk 7 | B6 |
 | B15 | Unit tests — model output sanity checks | 1 day | Wk 7 | B8 |
-| B16 | FastAPI backend skeleton (retraining pipeline, dev-tool only) | 2 days | Wk 7 | B1 |
+| B16 | *(Dev-only)* FastAPI backend skeleton — project setup, CORS, health endpoint, config | 1 day | Wk 7 | B1 |
 | B17 | Document model metrics for the paper (accuracy, precision/recall per class) | 1 day | Wk 8 | B9, B10 |
 | B18 | Final tuning / bug fixes from integration testing | 2 days | Wk 8 | A22 |
+| B19 | *(Dev-only)* `POST /classify` endpoint — batch-test model accuracy with images via curl/Postman | 1.5 days | Wk 7 | B16, B11 |
+| B20 | *(Dev-only)* Shared preprocessing service — same resize/normalize logic as `ml/preprocess.py` (prevents app↔model drift) | 1 day | Wk 7 | B6, B16 |
+| B21 | *(Dev-only)* Pydantic schemas mirroring the app's `ClassificationResult` (variety, ripeness, confidence) | 0.5 day | Wk 7 | B3, B16 |
+| B23 | *(Dev-only)* Image upload validation — file type check, max size, resize before inference | 0.5 day | Wk 7 | B19 |
+| B24 | *(Dev-only)* API tests — `/classify` (valid/invalid image, edge cases) + `/health` | 1 day | Wk 8 | B19 |
 
-**Track B total: ~34 days** (~6.8 weeks — this is the longer pole; dataset work drives the timeline)
+**Track B total: ~37 days** (~7.4 weeks — fits within 8 calendar weeks with Wk 7–8 parallel execution)
+
+#### Dev backend purpose (why it exists for an offline app)
+
+The backend is a **developer-only testing tool** that is never shipped, never deployed to production, and never called by the mobile app. It exists to solve two specific problems:
+
+1. **Batch model testing.** Marc Paul can test the model against hundreds of images via `curl -X POST /classify -F image=@banana.jpg` without building or running Flutter every time. This is critical during the tuning phase (B9–B10) when he's iterating rapidly.
+2. **Preprocessing parity.** The Python preprocessing in `backend/app/services/preprocessing.py` mirrors the Dart preprocessing in `TFLiteInferenceService`. If these two drift apart (e.g. different resize dimensions or normalization), the model will give different results during training vs. on-device — a silent, hard-to-debug issue. Having both in the repo makes the contract testable.
+
+| Concern | App (on-device, shipped) | Dev Backend (local-only, never shipped) |
+|---|---|---|
+| **Preprocessing** | Dart resize/normalize in `TFLiteInferenceService` | Python resize/normalize — must match Dart exactly |
+| **Model** | `.tflite` bundled in `assets/model/` | Same `.tflite` loaded by `backend/app/services/inference.py` |
+| **Output shape** | `ClassificationResult(variety, ripeness, confidence)` | Pydantic `ClassificationResponse` — same fields |
+| **Labels** | `assets/model/labels.txt` | `backend/app/config.py` reads the same `labels.txt` |
+| **Network calls** | ❌ **None. Ever.** All inference is on-device. | Only runs on `localhost` during development |
 
 ### Combined Week-by-Week View
 
@@ -589,9 +679,9 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | **3** | Results screen + mock wiring, scan-again loop, per-ripeness banana info data + health benefits/dish widgets (§7.6) | Dataset sourcing continues, labeling |
 | **4** | Local storage, history screen (list + delete) | Preprocessing, train/test split, baseline training starts |
 | **5** | Loading state, error handling, full UI guideline audit | Baseline training finishes, evaluation, tuning begins |
-| **6** | Widget tests (camera, results, history, health benefits/dish cards) | Tuning continues, TFLite conversion + validation, Dart integration starts |
-| **7** | **Integration** (swap to real model), device testing incl. outdoor readability, bug fixes | Finish Dart integration, unit tests, FastAPI skeleton |
-| **8** | Final bug fixes, UI/UX polish, buffer | Document metrics, final tuning, buffer |
+| **6** | Widget tests, onboarding screen (§7.7), upload-from-gallery (§7.8), preferences service | Tuning continues, TFLite conversion + validation, Dart integration starts |
+| **7** | **Integration** (swap to real model), device testing incl. outdoor readability, bug fixes | Finish Dart integration, unit tests, dev backend (`/classify` for batch testing + shared preprocessing) |
+| **8** | Final bug fixes, UI/UX polish, buffer | Document metrics, final tuning, dev backend API tests |
 
 ### Why this fits 2 months safely
 
@@ -704,12 +794,17 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ---
 
-### Week 6 — Tests, TFLite Conversion & Dart Integration Start
+### Week 6 — Tests, New Features, TFLite Conversion & Dart Integration Start
 **Emanuel**
 - [ ] A18 — Widget tests: camera screen
 - [ ] A19 — Widget tests: results screen
 - [ ] A20 — Widget tests: history screen
 - [ ] A29 — Widget tests: `HealthBenefitsCard` + `DishSuggestionsCard` + updated `ResultCard` (§7.6)
+- [ ] A30 — Onboarding screen: swipeable first-time tutorial with 3–4 pages (§7.7)
+- [ ] A31 — `PreferencesService` + first-launch flag (`has_completed_onboarding`)
+- [ ] A32 — Wire onboarding into `main.dart` — show on first launch, skip thereafter
+- [ ] A33 — Upload image from gallery: `image_picker` integration on camera screen (§7.8)
+- [ ] A34 — Widget tests: onboarding screen + upload image button
 
 **Marc Paul**
 - [ ] B10 — Hyperparameter tuning — finishing up
@@ -734,7 +829,11 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 - [ ] B13 — Finish Dart `TFLiteInferenceService` integration
 - [ ] B14 — Unit tests: preprocessing pipeline
 - [ ] B15 — Unit tests: model output sanity checks
-- [ ] B16 — FastAPI backend skeleton (retraining pipeline, dev-tool only)
+- [ ] B16 — *(Dev-only)* FastAPI backend skeleton: project setup, CORS, health endpoint, config
+- [ ] B19 — *(Dev-only)* `POST /classify` endpoint: batch-test model with images
+- [ ] B20 — *(Dev-only)* Shared preprocessing service: same resize/normalize as `ml/preprocess.py`
+- [ ] B21 — *(Dev-only)* Pydantic schemas mirroring the app's `ClassificationResult`
+- [ ] B23 — *(Dev-only)* Image upload validation: file type check, max size, resize
 
 **Rey (monitor)**
 - [ ] Actively coordinate the mock→real swap — this is the one week both devs truly depend on each other
@@ -751,6 +850,7 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 **Marc Paul**
 - [ ] B17 — Document model metrics for the paper (accuracy, precision/recall per class)
 - [ ] B18 — Final tuning / bug fixes from integration testing
+- [ ] B24 — *(Dev-only)* API tests: `/classify` + `/health` endpoints
 
 **Rey (monitor)**
 - [ ] Final full-app review against §7 UI rules before considering it demo/submission-ready
