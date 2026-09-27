@@ -2,6 +2,8 @@
 ///
 /// Covers: empty state, populated list, delete per-record, clear all with
 /// confirmation, navigation to results, error state, and §7 rule compliance.
+library;
+
 import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/screens/history_screen.dart';

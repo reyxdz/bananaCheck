@@ -5,6 +5,8 @@
 /// The channel stubs from the shared `widget_test.dart` helpers are reused
 /// via copy because dart test files cannot import from sibling test files
 /// without a package.
+library;
+
 import 'package:banana_classifier/main.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
