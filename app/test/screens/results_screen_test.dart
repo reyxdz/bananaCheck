@@ -164,11 +164,52 @@ void main() {
     testWidgets('never shows raw jargon terms', (tester) async {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
-      // §7.3: these terms must never appear on screen.
       expect(find.textContaining('confidence score'), findsNothing);
       expect(find.textContaining('inference'), findsNothing);
       expect(find.textContaining('class probability'), findsNothing);
       expect(find.textContaining('Classification:'), findsNothing);
     });
+
+    // ── A19 extended: vendor advice per ripeness ──
+
+    testWidgets('shows vendor advice for ripe result', (tester) async {
+      await tester.pumpWidget(buildScreen(result: highConfidenceResult));
+
+      expect(
+        find.textContaining('Ready for immediate consumption'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows vendor advice for unripe result', (tester) async {
+      await tester.pumpWidget(buildScreen(result: medConfidenceResult));
+
+      expect(
+        find.textContaining('Store at room temperature'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows vendor advice for overripe result', (tester) async {
+      await tester.pumpWidget(buildScreen(result: lowConfidenceResult));
+
+      expect(
+        find.textContaining('Best used immediately'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('renders without crash when imagePath is null', (tester) async {
+      await tester.pumpWidget(buildScreen(result: highConfidenceResult));
+
+      expect(find.text('Lakatan — Ripe'), findsOneWidget);
+    });
+
+    testWidgets('content is scrollable for small screens', (tester) async {
+      await tester.pumpWidget(buildScreen(result: highConfidenceResult));
+
+      expect(find.byType(SingleChildScrollView), findsOneWidget);
+    });
   });
 }
+
