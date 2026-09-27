@@ -78,8 +78,7 @@ void main() {
       expect(find.text('No Saved Scans Yet'), findsOneWidget);
     });
 
-    testWidgets('shows "Scan a Banana Now" CTA in empty state',
-        (tester) async {
+    testWidgets('shows "Scan a Banana Now" CTA in empty state', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: HistoryScreen(storageService: FakeStorageService()),

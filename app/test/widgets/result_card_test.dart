@@ -258,7 +258,8 @@ void main() {
 
     // ── InfoPill badges ──
 
-    testWidgets('shows variety and ripeness as InfoPill badges', (tester) async {
+    testWidgets('shows variety and ripeness as InfoPill badges',
+        (tester) async {
       final result = ClassificationResult(
         variety: 'Lakatan',
         ripeness: 'Ripe',
@@ -274,7 +275,14 @@ void main() {
 
     // ── All 6 varieties show info cards ──
 
-    for (final variety in ['saba', 'lakatan', 'cavendish', 'cordova', 'senorita', 'latundan']) {
+    for (final variety in [
+      'saba',
+      'lakatan',
+      'cavendish',
+      'cordova',
+      'senorita',
+      'latundan'
+    ]) {
       testWidgets('shows info cards for $variety variety', (tester) async {
         final result = ClassificationResult(
           variety: variety[0].toUpperCase() + variety.substring(1),
@@ -289,4 +297,3 @@ void main() {
     }
   });
 }
-

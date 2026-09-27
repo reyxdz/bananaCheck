@@ -186,8 +186,7 @@ void main() {
       expect(find.byIcon(Icons.camera_alt), findsOneWidget);
     });
 
-    testWidgets(
-        'permanently denied view shows "Open Settings" button per §7.2',
+    testWidgets('permanently denied view shows "Open Settings" button per §7.2',
         (tester) async {
       await tester.pumpWidget(buildApp(cameraStatus: 4));
       await tester.pumpAndSettle();
