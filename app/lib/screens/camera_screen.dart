@@ -428,13 +428,13 @@ class _LivePreview extends StatelessWidget {
           // Center target reticle frame to help farmers align the banana
           Center(
             child: Container(
-              width: DesignTokens.reticleWidth,
-              height: DesignTokens.reticleHeight,
+              width: 250,
+              height: 330,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.85),
-                  width: DesignTokens.reticleBorderWidth,
+                  width: 2.5,
                 ),
               ),
               child: Stack(
@@ -451,7 +451,7 @@ class _LivePreview extends StatelessWidget {
                       child: const Icon(
                         Icons.center_focus_weak,
                         color: DesignTokens.accent,
-                        size: DesignTokens.headingTextSize,
+                        size: 24,
                       ),
                     ),
                   ),
@@ -483,7 +483,7 @@ class _LivePreview extends StatelessWidget {
                   Icon(
                     Icons.center_focus_strong,
                     color: DesignTokens.accent,
-                    size: DesignTokens.iconDefault,
+                    size: 20,
                   ),
                   SizedBox(width: DesignTokens.spacingSmall),
                   Expanded(
