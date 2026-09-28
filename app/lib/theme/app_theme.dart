@@ -73,13 +73,10 @@ abstract final class AppTheme {
         backgroundColor: DesignTokens.primaryLight,
         labelStyle: const TextStyle(
           color: DesignTokens.primaryDark,
-          fontSize: DesignTokens.pillTextSize,
+          fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.chipPaddingHorizontal,
-          vertical: DesignTokens.chipPaddingVertical,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
           side: BorderSide.none,

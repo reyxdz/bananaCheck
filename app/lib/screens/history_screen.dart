@@ -2,13 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../models/app_exception.dart';
 import '../models/scan_record.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
-import '../theme/ripeness_helpers.dart';
-import '../widgets/error_view.dart';
-import '../widgets/info_pill.dart';
 import 'results_screen.dart';
 
 /// Screen displaying past banana scan records saved in local storage.
@@ -30,7 +26,6 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   List<ScanRecord> _records = [];
   bool _isLoading = true;
-  AppException? _error;
 
   @override
   void initState() {
@@ -52,16 +47,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         setState(() {
           _records = items;
           _isLoading = false;
-          _error = null;
         });
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _error = AppException.from(e);
-        });
-      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -121,15 +110,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: DesignTokens.primary),
             )
-          : _error != null
-              ? ErrorView(
-                  exception: _error!,
-                  onRetry: _loadHistory,
-                  retryLabel: 'Try Again',
-                )
-              : _records.isEmpty
-                  ? _buildEmptyState(context)
-                  : _buildRecordList(context),
+          : _records.isEmpty
+              ? _buildEmptyState(context)
+              : _buildRecordList(context),
     );
   }
 
@@ -222,6 +205,19 @@ class _HistoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
+  Color _ripenessColor(String ripeness) {
+    switch (ripeness.toLowerCase()) {
+      case 'unripe':
+        return DesignTokens.ripenessUnripe;
+      case 'ripe':
+        return DesignTokens.ripenessRipe;
+      case 'overripe':
+        return DesignTokens.ripenessOverripe;
+      default:
+        return DesignTokens.primary;
+    }
+  }
+
   String _formatDate(DateTime dt) {
     final months = [
       'Jan',
@@ -247,7 +243,7 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = RipenessHelpers.colorFor(record.result.ripeness);
+    final color = _ripenessColor(record.result.ripeness);
 
     return Card(
       elevation: 2,
@@ -262,8 +258,8 @@ class _HistoryCard extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
                 child: SizedBox(
-                  width: DesignTokens.primaryActionSize,
-                  height: DesignTokens.primaryActionSize,
+                  width: 64,
+                  height: 64,
                   child: Image.file(
                     File(record.imagePath),
                     fit: BoxFit.cover,
@@ -272,7 +268,7 @@ class _HistoryCard extends StatelessWidget {
                       child: const Icon(
                         Icons.eco,
                         color: DesignTokens.primary,
-                        size: DesignTokens.iconLarge / 1.5,
+                        size: 32,
                       ),
                     ),
                   ),
@@ -292,7 +288,7 @@ class _HistoryCard extends StatelessWidget {
                             '${record.result.variety} — ${record.result.ripeness}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: DesignTokens.bodyTextSize,
+                              fontSize: 16,
                               color: DesignTokens.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -300,18 +296,28 @@ class _HistoryCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: DesignTokens.spacingExtraSmall),
-                    InfoPill(
-                      icon: RipenessHelpers.iconFor(record.result.ripeness),
-                      label: record.result.ripeness,
-                      color: color,
-                      outlined: true,
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        record.result.ripeness,
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: DesignTokens.spacingExtraSmall + 2),
+                    const SizedBox(height: 6),
                     Text(
                       _formatDate(record.scannedAt),
                       style: const TextStyle(
-                        fontSize: DesignTokens.captionTextSize,
+                        fontSize: 12,
                         color: DesignTokens.textSecondary,
                       ),
                     ),
