@@ -1,9 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
-import 'models/scan_record.dart';
+import 'screens/analyzing_screen.dart';
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/results_screen.dart';
@@ -72,27 +71,34 @@ class _HomeScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _handleScan(BuildContext context, File capturedFile) async {
-    final result = await inferenceService.classify(capturedFile);
-    if (!context.mounted) return;
-
-    // ── A12: persist the scan result to local storage ──
-    final record = ScanRecord(
-      id: const Uuid().v4(),
-      imagePath: capturedFile.path,
-      result: result,
-      scannedAt: DateTime.now(),
-    );
-    await storageService.saveRecord(record);
-
-    if (!context.mounted) return;
-
+  /// Pushes [AnalyzingScreen] which handles classification, storage,
+  /// error handling, and the low-confidence gate. On success it navigates
+  /// to [ResultsScreen] — the user never sees a blank screen.
+  void _handleScan(BuildContext context, File capturedFile) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => ResultsScreen(
-          result: result,
-          imagePath: capturedFile.path,
-          onScanAgain: () => Navigator.of(context).pop(),
+        builder: (_) => AnalyzingScreen(
+          inferenceService: inferenceService,
+          storageService: storageService,
+          capturedFile: capturedFile,
+          onComplete: (result, imagePath) {
+            if (!context.mounted) return;
+            // Pop the AnalyzingScreen, then push ResultsScreen so
+            // "Scan Again" pops straight back to the camera.
+            final navigator = Navigator.of(context);
+            navigator.pop();
+            navigator.push(
+              MaterialPageRoute<void>(
+                builder: (_) => ResultsScreen(
+                  result: result,
+                  imagePath: imagePath,
+                  onScanAgain: () {
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

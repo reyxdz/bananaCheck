@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/scan_record.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
+import '../theme/ripeness_helpers.dart';
 import 'results_screen.dart';
 
 /// Screen displaying past banana scan records saved in local storage.
@@ -132,7 +133,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const Icon(
                   Icons.history_toggle_off_rounded,
-                  size: 64,
+                  size: DesignTokens.iconEmptyState,
                   color: DesignTokens.textSecondary,
                 ),
               ),
@@ -205,19 +206,6 @@ class _HistoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  Color _ripenessColor(String ripeness) {
-    switch (ripeness.toLowerCase()) {
-      case 'unripe':
-        return DesignTokens.ripenessUnripe;
-      case 'ripe':
-        return DesignTokens.ripenessRipe;
-      case 'overripe':
-        return DesignTokens.ripenessOverripe;
-      default:
-        return DesignTokens.primary;
-    }
-  }
-
   String _formatDate(DateTime dt) {
     final months = [
       'Jan',
@@ -243,7 +231,7 @@ class _HistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _ripenessColor(record.result.ripeness);
+    final color = RipenessHelpers.colorFor(record.result.ripeness);
 
     return Card(
       elevation: 2,
@@ -268,7 +256,7 @@ class _HistoryCard extends StatelessWidget {
                       child: const Icon(
                         Icons.eco,
                         color: DesignTokens.primary,
-                        size: 32,
+                        size: DesignTokens.iconHistoryFallback,
                       ),
                     ),
                   ),
@@ -288,7 +276,7 @@ class _HistoryCard extends StatelessWidget {
                             '${record.result.variety} — ${record.result.ripeness}',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: DesignTokens.bodyTextSize,
                               color: DesignTokens.textPrimary,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -296,28 +284,28 @@ class _HistoryCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: DesignTokens.spacingExtraSmall),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                          horizontal: DesignTokens.badgePaddingHorizontal, vertical: DesignTokens.badgePaddingVertical),
                       decoration: BoxDecoration(
                         color: color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(DesignTokens.badgeRadius),
                       ),
                       child: Text(
                         record.result.ripeness,
                         style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontSize: DesignTokens.captionTextSize,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: DesignTokens.chipPaddingVertical),
                     Text(
                       _formatDate(record.scannedAt),
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: DesignTokens.captionTextSize,
                         color: DesignTokens.textSecondary,
                       ),
                     ),

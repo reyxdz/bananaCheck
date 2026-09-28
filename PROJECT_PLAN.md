@@ -407,7 +407,7 @@ pytest
 
 ### 7.6 Banana Info Data — Health Benefits & Dish Suggestions (Per Ripeness)
 
-The app supports **6 fixed banana varieties**: Saba, Bungulan, Cavendish, Senorita, Latundan, and Morado. For each variety **and ripeness level**, the results screen shows **health benefits** and **suggested dishes** — all hardcoded, no API or database required.
+The app supports **6 fixed banana varieties**: Saba, Cordova, Cavendish, Senorita, Latundan, and Lakatan. For each variety **and ripeness level**, the results screen shows **health benefits** and **suggested dishes** — all hardcoded, no API or database required.
 
 #### Data rules
 
@@ -424,11 +424,11 @@ The app supports **6 fixed banana varieties**: Saba, Bungulan, Cavendish, Senori
 | Variety | Unripe | Ripe | Overripe |
 |---|---|---|---|
 | **Saba** | Nilupak, Ginanggang, Boiled saba | Banana cue, Turon, Maruya, Saba con yelo | Maruya (sweeter batter), Banana bread, Sweetened mashed saba |
-| **Bungulan** | Not typically eaten unripe | Eaten fresh, Banana shake, Fruit salad | Banana bread, Smoothie |
+| **Cordova** | Not typically eaten unripe | Eaten fresh, Banana shake, Fruit salad | Banana bread, Smoothie |
 | **Cavendish** | Green smoothie (blended), Banana chips (fried) | Eaten fresh, Banana pancakes, Smoothie bowl, Banana split | Banana bread, Banana muffins, Banana ice cream |
 | **Senorita** | Not typically eaten unripe | Eaten fresh (snack banana), Dessert garnish, Fruit platter | Smoothie, Mashed for baby food |
 | **Latundan** | Not typically eaten unripe | Eaten fresh, Banana fritter, Ginataang saging | Banana ice cream, Banana jam, Overripe banana bread |
-| **Morado** | Not typically eaten unripe | Eaten fresh, Banana flambe, Purple banana bread | Smoothies, Purple banana jam, Frozen banana pops |
+| **Lakatan** | Banana chips, Green banana salad | Eaten fresh, Banana cue, Turon, Smoothie bowl | Banana bread, Banana pancakes, Banana ice cream |
 
 #### Example data structure (Dart)
 

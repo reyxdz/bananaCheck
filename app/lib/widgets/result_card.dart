@@ -5,7 +5,12 @@ import 'package:flutter/material.dart';
 import '../models/banana_info_data.dart';
 import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
+import '../theme/ripeness_helpers.dart';
 import 'confidence_indicator.dart';
+import 'info_pill.dart';
+import 'section_container.dart';
+import 'dish_suggestions_card.dart';
+import 'health_benefits_card.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -24,32 +29,6 @@ class ResultCard extends StatelessWidget {
   /// Path to the captured image to display as a thumbnail.
   /// Null in widget tests where no actual file exists.
   final String? imagePath;
-
-  IconData get _ripenessIcon {
-    switch (result.ripeness.toLowerCase()) {
-      case 'unripe':
-        return Icons.hourglass_top_rounded;
-      case 'ripe':
-        return Icons.check_circle_rounded;
-      case 'overripe':
-        return Icons.warning_rounded;
-      default:
-        return Icons.eco_rounded;
-    }
-  }
-
-  Color get _ripenessColor {
-    switch (result.ripeness.toLowerCase()) {
-      case 'unripe':
-        return DesignTokens.ripenessUnripe;
-      case 'ripe':
-        return DesignTokens.ripenessRipe;
-      case 'overripe':
-        return DesignTokens.ripenessOverripe;
-      default:
-        return DesignTokens.primary;
-    }
-  }
 
   String get _vendorRecommendation {
     switch (result.ripeness.toLowerCase()) {
@@ -112,65 +91,16 @@ class ResultCard extends StatelessWidget {
               spacing: DesignTokens.spacingSmall,
               runSpacing: DesignTokens.spacingSmall,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: DesignTokens.primaryLight,
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.eco,
-                        color: DesignTokens.primaryDark,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        result.variety,
-                        style: const TextStyle(
-                          color: DesignTokens.primaryDark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+                InfoPill(
+                  icon: Icons.eco,
+                  label: result.variety,
+                  color: DesignTokens.primaryDark,
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _ripenessColor.withOpacity(0.12),
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                    border: Border.all(
-                      color: _ripenessColor.withOpacity(0.4),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _ripenessIcon,
-                        color: _ripenessColor,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        result.ripeness,
-                        style: TextStyle(
-                          color: _ripenessColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+                InfoPill(
+                  icon: ripenessIcon,
+                  label: result.ripeness,
+                  color: ripenessColor,
+                  outlined: true,
                 ),
               ],
             ),
@@ -202,26 +132,20 @@ class ResultCard extends StatelessWidget {
             const SizedBox(height: DesignTokens.spacingMedium),
 
             // ── Farmer/Vendor Handling Advice Card ──
-            Container(
-              padding: const EdgeInsets.all(DesignTokens.spacingMedium),
-              decoration: BoxDecoration(
-                color: DesignTokens.background,
-                borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
-                border: Border.all(color: DesignTokens.border, width: 1),
-              ),
+            SectionContainer(
               child: Row(
                 children: [
                   const Icon(
                     Icons.tips_and_updates_outlined,
                     color: DesignTokens.accent,
-                    size: 22,
+                    size: DesignTokens.iconSectionHeader,
                   ),
                   const SizedBox(width: DesignTokens.spacingSmall),
                   Expanded(
                     child: Text(
                       _vendorRecommendation,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: DesignTokens.chipTextSize,
                         fontWeight: FontWeight.w500,
                         color: DesignTokens.textSecondary,
                       ),
@@ -230,6 +154,9 @@ class ResultCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Health Benefits & Dish Suggestions ──
+            _buildInfoCards(),
           ],
         ),
       ),

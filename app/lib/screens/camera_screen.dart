@@ -297,7 +297,7 @@ class _CameraScreenState extends State<CameraScreen>
                       icon: const Icon(
                         Icons.history_rounded,
                         color: DesignTokens.primaryDark,
-                        size: 20,
+                        size: DesignTokens.iconDefault,
                       ),
                       label: const Text(
                         'History',
@@ -428,8 +428,8 @@ class _LivePreview extends StatelessWidget {
           // Center target reticle frame to help farmers align the banana
           Center(
             child: Container(
-              width: 250,
-              height: 330,
+              width: DesignTokens.reticleWidth,
+              height: DesignTokens.reticleHeight,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 border: Border.all(
@@ -451,7 +451,7 @@ class _LivePreview extends StatelessWidget {
                       child: const Icon(
                         Icons.center_focus_weak,
                         color: DesignTokens.accent,
-                        size: 24,
+                        size: DesignTokens.iconAppBar,
                       ),
                     ),
                   ),
@@ -470,7 +470,7 @@ class _LivePreview extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0x7D000000)],
+                  colors: [Colors.transparent, DesignTokens.overlayGradientEnd],
                 ),
               ),
               padding: const EdgeInsets.symmetric(
@@ -483,7 +483,7 @@ class _LivePreview extends StatelessWidget {
                   Icon(
                     Icons.center_focus_strong,
                     color: DesignTokens.accent,
-                    size: 20,
+                    size: DesignTokens.iconDefault,
                   ),
                   SizedBox(width: DesignTokens.spacingSmall),
                   Expanded(
