@@ -27,6 +27,7 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   List<ScanRecord> _records = [];
   bool _isLoading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -41,7 +42,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
     try {
       final items = await service.getRecords();
       if (mounted) {
@@ -51,7 +55,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
     }
   }
 
@@ -111,9 +120,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: DesignTokens.primary),
             )
-          : _records.isEmpty
-              ? _buildEmptyState(context)
-              : _buildRecordList(context),
+          : _hasError
+              ? _buildErrorState(context)
+              : _records.isEmpty
+                  ? _buildEmptyState(context)
+                  : _buildRecordList(context),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(DesignTokens.spacingLarge),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: DesignTokens.iconEmptyState,
+              color: DesignTokens.confidenceLow,
+            ),
+            const SizedBox(height: DesignTokens.spacingLarge),
+            Text(
+              'Something went wrong',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: DesignTokens.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: DesignTokens.spacingSmall),
+            const Text(
+              'We could not load your scan history. Please try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: DesignTokens.bodyTextSize,
+                color: DesignTokens.textSecondary,
+              ),
+            ),
+            const SizedBox(height: DesignTokens.spacingExtraLarge),
+            FilledButton.icon(
+              onPressed: _loadHistory,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -292,13 +344,24 @@ class _HistoryCard extends StatelessWidget {
                         color: color.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(DesignTokens.badgeRadius),
                       ),
-                      child: Text(
-                        record.result.ripeness,
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                          fontSize: DesignTokens.captionTextSize,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            RipenessHelpers.iconFor(record.result.ripeness),
+                            color: color,
+                            size: DesignTokens.captionTextSize + 2,
+                          ),
+                          const SizedBox(width: DesignTokens.spacingExtraSmall),
+                          Text(
+                            record.result.ripeness,
+                            style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.w700,
+                              fontSize: DesignTokens.captionTextSize,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: DesignTokens.chipPaddingVertical),
