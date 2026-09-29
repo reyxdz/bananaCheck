@@ -104,8 +104,6 @@ void main() {
       expect(find.byIcon(Icons.warning_rounded), findsOneWidget);
     });
 
-    // ── Image handling ──
-
     testWidgets('renders without image when imagePath is null', (tester) async {
       final result = ClassificationResult(
         variety: 'Lakatan',
@@ -119,5 +117,183 @@ void main() {
       expect(find.text('Lakatan — Ripe'), findsOneWidget);
       expect(find.text("We're pretty sure"), findsOneWidget);
     });
+
+    // ── A29: HealthBenefitsCard + DishSuggestionsCard wired into ResultCard ──
+
+    testWidgets('shows Health Benefits section for known variety',
+        (tester) async {
+      final result = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.90,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(find.text('Health Benefits'), findsOneWidget);
+      expect(find.byIcon(Icons.favorite_rounded), findsOneWidget);
+    });
+
+    testWidgets('shows Suggested Dishes section for known variety + ripeness',
+        (tester) async {
+      final result = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.90,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(find.text('Suggested Dishes'), findsOneWidget);
+      expect(find.byIcon(Icons.restaurant_rounded), findsOneWidget);
+    });
+
+    testWidgets('shows actual Saba ripe dishes from bananaInfoMap',
+        (tester) async {
+      final result = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.90,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(find.text('Banana cue'), findsOneWidget);
+      expect(find.text('Turon'), findsOneWidget);
+      expect(find.text('Maruya'), findsOneWidget);
+    });
+
+    testWidgets('shows general health benefits for Saba', (tester) async {
+      final result = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.90,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(
+        find.text('Rich in potassium — good for heart health'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hides dish suggestions when ripeness key missing',
+        (tester) async {
+      // Cordova has no 'unripe' key.
+      final result = ClassificationResult(
+        variety: 'Cordova',
+        ripeness: 'Unripe',
+        confidence: 0.80,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      // Health benefits still shown (general).
+      expect(find.text('Health Benefits'), findsOneWidget);
+      // Dish suggestions hidden — no ripeness key.
+      expect(find.text('Suggested Dishes'), findsNothing);
+    });
+
+    testWidgets('hides both info cards for unknown variety', (tester) async {
+      final result = ClassificationResult(
+        variety: 'UnknownBanana',
+        ripeness: 'Ripe',
+        confidence: 0.85,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      // Unknown variety → no info cards at all.
+      expect(find.text('Health Benefits'), findsNothing);
+      expect(find.text('Suggested Dishes'), findsNothing);
+    });
+
+    // ── Vendor advice (per ripeness) ──
+
+    testWidgets('shows vendor advice for ripe', (tester) async {
+      final result = ClassificationResult(
+        variety: 'Lakatan',
+        ripeness: 'Ripe',
+        confidence: 0.90,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(
+        find.textContaining('Ready for immediate consumption'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows vendor advice for unripe', (tester) async {
+      final result = ClassificationResult(
+        variety: 'Cavendish',
+        ripeness: 'Unripe',
+        confidence: 0.88,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(
+        find.textContaining('Store at room temperature'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('shows vendor advice for overripe', (tester) async {
+      final result = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Overripe',
+        confidence: 0.75,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(
+        find.textContaining('Best used immediately'),
+        findsOneWidget,
+      );
+    });
+
+    // ── InfoPill badges ──
+
+    testWidgets('shows variety and ripeness as InfoPill badges',
+        (tester) async {
+      final result = ClassificationResult(
+        variety: 'Lakatan',
+        ripeness: 'Ripe',
+        confidence: 0.92,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      // Both variety and ripeness appear as pill badges + in headline.
+      expect(find.text('Lakatan'), findsAtLeast(1));
+      expect(find.text('Ripe'), findsAtLeast(1));
+    });
+
+    // ── All 6 varieties show info cards ──
+
+    for (final variety in [
+      'saba',
+      'lakatan',
+      'cavendish',
+      'cordova',
+      'senorita',
+      'latundan'
+    ]) {
+      testWidgets('shows info cards for $variety variety', (tester) async {
+        final result = ClassificationResult(
+          variety: variety[0].toUpperCase() + variety.substring(1),
+          ripeness: 'Ripe',
+          confidence: 0.90,
+        );
+
+        await tester.pumpWidget(buildCard(result: result));
+
+        expect(find.text('Health Benefits'), findsOneWidget);
+      });
+    }
   });
 }

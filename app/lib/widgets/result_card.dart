@@ -7,10 +7,10 @@ import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
 import '../theme/ripeness_helpers.dart';
 import 'confidence_indicator.dart';
-import 'dish_suggestions_card.dart';
-import 'health_benefits_card.dart';
 import 'info_pill.dart';
 import 'section_container.dart';
+import 'dish_suggestions_card.dart';
+import 'health_benefits_card.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -94,7 +94,7 @@ class ResultCard extends StatelessWidget {
                 InfoPill(
                   icon: Icons.eco,
                   label: result.variety,
-                  color: DesignTokens.primary,
+                  color: DesignTokens.primaryDark,
                 ),
                 InfoPill(
                   icon: ripenessIcon,
@@ -138,7 +138,7 @@ class ResultCard extends StatelessWidget {
                   const Icon(
                     Icons.tips_and_updates_outlined,
                     color: DesignTokens.accent,
-                    size: DesignTokens.iconTip,
+                    size: DesignTokens.iconSectionHeader,
                   ),
                   const SizedBox(width: DesignTokens.spacingSmall),
                   Expanded(
@@ -155,7 +155,7 @@ class ResultCard extends StatelessWidget {
               ),
             ),
 
-            // ── Health Benefits & Dish Suggestions (§7.6) ──
+            // ── Health Benefits & Dish Suggestions ──
             _buildInfoCards(),
           ],
         ),

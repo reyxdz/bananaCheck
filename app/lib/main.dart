@@ -71,8 +71,9 @@ class _HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Navigate to the AnalyzingScreen which handles classification, storage,
-  /// and then forwards to ResultsScreen on success (A15 + A12).
+  /// Pushes [AnalyzingScreen] which handles classification, storage,
+  /// error handling, and the low-confidence gate. On success it navigates
+  /// to [ResultsScreen] — the user never sees a blank screen.
   void _handleScan(BuildContext context, File capturedFile) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -81,13 +82,19 @@ class _HomeScreen extends StatelessWidget {
           storageService: storageService,
           capturedFile: capturedFile,
           onComplete: (result, imagePath) {
-            // Replace the AnalyzingScreen with the ResultsScreen.
-            Navigator.of(context).pushReplacement(
+            if (!context.mounted) return;
+            // Pop the AnalyzingScreen, then push ResultsScreen so
+            // "Scan Again" pops straight back to the camera.
+            final navigator = Navigator.of(context);
+            navigator.pop();
+            navigator.push(
               MaterialPageRoute<void>(
                 builder: (_) => ResultsScreen(
                   result: result,
                   imagePath: imagePath,
-                  onScanAgain: () => Navigator.of(context).pop(),
+                  onScanAgain: () {
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
                 ),
               ),
             );

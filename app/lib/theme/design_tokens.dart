@@ -23,19 +23,10 @@ abstract final class DesignTokens {
   static const Color confidenceHigh = Color(0xFF2E7D32); // Green
   static const Color confidenceMedium = Color(0xFFF57F17); // Amber
   static const Color confidenceLow = Color(0xFFD32F2F); // Red
-  static const Color errorBackground = Color(0xFFFDE8E8); // Light red bg
-
-  // Overlays & Opacities
-  static const Color overlayDark = Color(0x7D000000); // Camera bottom gradient
-  static const Color overlayWhite = Color(0xD9FFFFFF); // 85% white for reticle
-  static const Color shutterFlash = Color(0xB3FFFFFF); // 70% white
-  static const double badgeBgOpacity = 0.12;
-  static const double badgeBorderOpacity = 0.40;
-  static const double reticleBgOpacity = 0.60;
-  static const double analyzingOverlayOpacity = 0.75;
 
   // Spacing Tokens
   static const double spacingExtraSmall = 4;
+  static const double pillIconGap = 6;
   static const double spacingSmall = 8;
   static const double spacingMedium = 16;
   static const double spacingLarge = 24;
@@ -54,9 +45,38 @@ abstract final class DesignTokens {
   // Icon & Image Sizes
   static const double logoSmall = 36;
   static const double logoMedium = 48;
+  static const double iconSmall = 16;
+  static const double iconDefault = 20;
+  static const double iconSectionHeader = 22;
+  static const double iconAppBar = 24;
   static const double iconMedium = 28;
+  static const double iconHistoryFallback = 32;
   static const double iconLarge = 48;
+  static const double iconEmptyState = 64;
   static const double imageThumbnailSize = 200;
+
+  // Chip / Pill Spacing
+  static const double chipPaddingHorizontal = 12;
+  static const double chipPaddingVertical = 6;
+
+  // Badge Spacing (smaller inline labels)
+  static const double badgePaddingHorizontal = 8;
+  static const double badgePaddingVertical = 2;
+  static const double badgeRadius = 4;
+
+  // Section borders
+  static const double sectionBorderWidth = 1;
+
+  // Overlay
+  static const double analyzingOverlayOpacity = 0.75;
+  static const Color overlayGradientEnd = Color(0x7D000000);
+
+  // Camera Reticle Dimensions
+  static const double reticleWidth = 250;
+  static const double reticleHeight = 330;
+
+  // Semantic Colors
+  static const Color errorBackground = Color(0xFFFDECEC);
 
   // Type Scale
   static const double captionTextSize = 12;
@@ -66,21 +86,4 @@ abstract final class DesignTokens {
   static const double subheadingTextSize = 18;
   static const double headingTextSize = 24;
   static const double resultHeadlineSize = 28;
-
-  // Chip / Pill Padding
-  static const double chipPaddingHorizontal = 12;
-  static const double chipPaddingVertical = 6;
-
-  // Icon Sizes — small
-  static const double iconSmall = 16;
-  static const double iconDefault = 20;
-  static const double iconTip = 22;
-
-  // Card Section
-  static const double sectionBorderWidth = 1;
-
-  // Camera Reticle
-  static const double reticleWidth = 250;
-  static const double reticleHeight = 330;
-  static const double reticleBorderWidth = 2.5;
 }
