@@ -339,10 +339,12 @@ class _HistoryCard extends StatelessWidget {
                     const SizedBox(height: DesignTokens.spacingExtraSmall),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: DesignTokens.badgePaddingHorizontal, vertical: DesignTokens.badgePaddingVertical),
+                          horizontal: DesignTokens.badgePaddingHorizontal,
+                          vertical: DesignTokens.badgePaddingVertical),
                       decoration: BoxDecoration(
                         color: color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(DesignTokens.badgeRadius),
+                        borderRadius:
+                            BorderRadius.circular(DesignTokens.badgeRadius),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
