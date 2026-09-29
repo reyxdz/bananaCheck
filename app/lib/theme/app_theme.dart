@@ -76,7 +76,9 @@ abstract final class AppTheme {
           fontSize: DesignTokens.pillTextSize,
           fontWeight: FontWeight.w700,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: DesignTokens.chipPaddingHorizontal, vertical: DesignTokens.chipPaddingVertical),
+        padding: const EdgeInsets.symmetric(
+            horizontal: DesignTokens.chipPaddingHorizontal,
+            vertical: DesignTokens.chipPaddingVertical),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
           side: BorderSide.none,
