@@ -1,10 +1,12 @@
 import 'package:banana_classifier/main.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
+import 'package:banana_classifier/services/preferences_service.dart';
 import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 //  In-memory StorageService for tests
@@ -284,6 +286,47 @@ void main() {
     // with a short, plain-language label".
     // Both the camera icon and the "Scan" text label must be present.
     expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
+  });
+
+  // ── A32: first-launch onboarding ──
+
+  testWidgets('first launch shows onboarding, then camera after Skip',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await PreferencesService.instance();
+
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        preferencesService: prefs,
+      ),
+    );
+    expect(find.text('Know your bananas.'), findsOneWidget);
+
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Scan'), findsOneWidget);
+    expect(prefs.hasCompletedOnboarding, isTrue);
+  });
+
+  testWidgets('onboarding is not shown once completed', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      PreferencesService.onboardingKey: true,
+    });
+
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        preferencesService: await PreferencesService.instance(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Know your bananas.'), findsNothing);
     expect(find.text('Scan'), findsOneWidget);
   });
 }
