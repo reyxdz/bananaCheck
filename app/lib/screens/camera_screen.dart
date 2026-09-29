@@ -297,7 +297,7 @@ class _CameraScreenState extends State<CameraScreen>
                       icon: const Icon(
                         Icons.history_rounded,
                         color: DesignTokens.primaryDark,
-                        size: 20,
+                        size: DesignTokens.iconDefault,
                       ),
                       label: const Text(
                         'History',
@@ -434,7 +434,7 @@ class _LivePreview extends StatelessWidget {
                 borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
                 border: Border.all(
                   color: Colors.white.withOpacity(0.85),
-                  width: DesignTokens.reticleBorderWidth,
+                  width: 2.5,
                 ),
               ),
               child: Stack(
@@ -451,7 +451,7 @@ class _LivePreview extends StatelessWidget {
                       child: const Icon(
                         Icons.center_focus_weak,
                         color: DesignTokens.accent,
-                        size: DesignTokens.headingTextSize,
+                        size: DesignTokens.iconAppBar,
                       ),
                     ),
                   ),
@@ -470,7 +470,7 @@ class _LivePreview extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0x7D000000)],
+                  colors: [Colors.transparent, DesignTokens.overlayGradientEnd],
                 ),
               ),
               padding: const EdgeInsets.symmetric(

@@ -74,7 +74,7 @@ class ResultsScreen extends StatelessWidget {
                       errorBuilder: (_, __, ___) => const Icon(
                         Icons.eco,
                         color: DesignTokens.primary,
-                        size: 24,
+                        size: DesignTokens.iconAppBar,
                       ),
                     ),
                   ),
