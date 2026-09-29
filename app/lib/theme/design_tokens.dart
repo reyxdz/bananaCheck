@@ -75,6 +75,21 @@ abstract final class DesignTokens {
   static const double reticleWidth = 250;
   static const double reticleHeight = 330;
 
+  // Onboarding (§7.7) — natural green, warm cream, muted yellow
+  static const Color onboardingBackground = Color(0xFFF7F5EF);
+  static const Color onboardingAccentText = Color(0xFF5E8F55);
+  static const Color onboardingHighlight = Color(0xFFE9D48A);
+  static const Color onboardingPanel = Color(0xFFE6ECDD);
+  static const Color onboardingScrim = Color(0xFF16301A);
+  static const Color onboardingOnDark = Colors.white;
+  static const Color onboardingOnDarkMuted = Color(0xB3FFFFFF);
+  static const double onboardingHeadlineSize = 32;
+  static const double onboardingDotSize = 8;
+  static const double onboardingActiveDotWidth = 24;
+  static const double onboardingStepBadgeSize = 36;
+  static const double onboardingButtonHeight = 56;
+  static const double onboardingMinImageHeight = 160;
+
   // Semantic Colors
   static const Color errorBackground = Color(0xFFFDECEC);
 

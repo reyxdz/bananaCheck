@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'screens/analyzing_screen.dart';
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/results_screen.dart';
 import 'services/inference_service.dart';
 import 'services/mock_inference_service.dart';
+import 'services/preferences_service.dart';
 import 'services/sqflite_storage_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
@@ -15,11 +17,13 @@ import 'theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final storageService = await SqfliteStorageService.instance();
+  final preferencesService = await PreferencesService.instance();
 
   runApp(
     BananaClassifierApp(
       inferenceService: MockInferenceService(),
       storageService: storageService,
+      preferencesService: preferencesService,
     ),
   );
 }
@@ -28,22 +32,42 @@ class BananaClassifierApp extends StatelessWidget {
   const BananaClassifierApp({
     required this.inferenceService,
     required this.storageService,
+    this.preferencesService,
     super.key,
   });
 
   final InferenceService inferenceService;
   final StorageService storageService;
 
+  /// When null (e.g. in tests), onboarding is skipped entirely.
+  final PreferencesService? preferencesService;
+
   @override
   Widget build(BuildContext context) {
+    final home = _HomeScreen(
+      inferenceService: inferenceService,
+      storageService: storageService,
+    );
+    final prefs = preferencesService;
+
     return MaterialApp(
       title: 'Bananalyze',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: _HomeScreen(
-        inferenceService: inferenceService,
-        storageService: storageService,
-      ),
+      home: prefs == null || prefs.hasCompletedOnboarding
+          ? home
+          : Builder(
+              builder: (context) => OnboardingScreen(
+                onFinished: () {
+                  prefs.setOnboardingCompleted();
+                  // Replace onboarding so Back can't return to it.
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(builder: (_) => home),
+                    (_) => false,
+                  );
+                },
+              ),
+            ),
     );
   }
 }
