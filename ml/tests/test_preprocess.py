@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
 
 import numpy as np
@@ -47,6 +48,19 @@ def _scaffold_dataset(tmp_path: Path, *, images_per_class: int = 0) -> Path:
         for i in range(images_per_class):
             _create_test_image(folder / f"img_{i}.jpg", color="blue")
     return tmp_path
+
+
+def _create_left_right_image(path: Path) -> Path:
+    """Create a 4×2 image whose left column is red and right column is blue.
+
+    Useful for asserting that a horizontal flip actually swaps sides.
+    """
+    arr = np.zeros((2, 4, 3), dtype=np.uint8)
+    arr[:, :2] = (255, 0, 0)  # left half red
+    arr[:, 2:] = (0, 0, 255)  # right half blue
+    path.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(arr).save(path)
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +254,11 @@ class TestNormalizeImage:
         arr = normalize_image(img)
         assert arr.shape == (8, 10, 3)  # (height, width, channels)
 
+    def test_mid_gray_maps_to_half(self) -> None:
+        img = Image.new("RGB", (2, 2), color=(128, 128, 128))
+        arr = normalize_image(img)
+        np.testing.assert_allclose(arr, 128 / 255.0, rtol=1e-6)
+
 
 # ---------------------------------------------------------------------------
 # augment_image
@@ -280,6 +299,54 @@ class TestAugmentImage:
         cfg = AugmentConfig(random_crop_fraction=0.8)
         result = augment_image(img, cfg)
         assert result.size == (100, 100)
+
+    def test_none_config_uses_default_preset(self) -> None:
+        img = Image.new("RGB", (100, 80), color="blue")
+        result = augment_image(img)  # None → DEFAULT_AUGMENT
+        assert result.size == img.size
+        assert result.mode == "RGB"
+
+    def test_flip_actually_mirrors_content(self, tmp_path: Path) -> None:
+        # A deterministic flip (seed forces random.random() < 0.5) must swap
+        # the red (left) and blue (right) halves.
+        img = load_image(_create_left_right_image(tmp_path / "lr.png"))
+        random.seed(1)  # first random() draw is ~0.134 (< 0.5 → flip fires)
+        result = augment_image(img, AugmentConfig(horizontal_flip=True))
+        arr = np.asarray(result)
+        assert tuple(arr[0, 0]) == (0, 0, 255)  # left now blue
+        assert tuple(arr[0, -1]) == (255, 0, 0)  # right now red
+
+    def test_brightness_above_one_brightens(self) -> None:
+        img = Image.new("RGB", (20, 20), color=(100, 100, 100))
+        # A fixed range collapses random.uniform to a single factor of 2.0.
+        cfg = AugmentConfig(brightness_range=(2.0, 2.0))
+        result = augment_image(img, cfg)
+        assert np.asarray(result).mean() > np.asarray(img).mean()
+
+    def test_brightness_below_one_darkens(self) -> None:
+        img = Image.new("RGB", (20, 20), color=(100, 100, 100))
+        cfg = AugmentConfig(brightness_range=(0.5, 0.5))
+        result = augment_image(img, cfg)
+        assert np.asarray(result).mean() < np.asarray(img).mean()
+
+    def test_does_not_mutate_input(self) -> None:
+        img = Image.new("RGB", (60, 60), color="green")
+        before = np.asarray(img).copy()
+        augment_image(img, DEFAULT_AUGMENT)
+        np.testing.assert_array_equal(np.asarray(img), before)
+
+    def test_seeded_augmentation_is_reproducible(self) -> None:
+        # Non-trivial content so transforms actually vary pixel data.
+        rng = np.random.default_rng(1)
+        arr = rng.integers(0, 255, (64, 64, 3), dtype=np.uint8)
+        img = Image.fromarray(arr)
+
+        random.seed(123)
+        first = np.asarray(augment_image(img, DEFAULT_AUGMENT))
+        random.seed(123)
+        second = np.asarray(augment_image(img, DEFAULT_AUGMENT))
+
+        np.testing.assert_array_equal(first, second)
 
 
 # ---------------------------------------------------------------------------
@@ -372,3 +439,33 @@ class TestPreprocessDirectory:
         _scaffold_dataset(tmp_path, images_per_class=0)
         results = preprocess_directory(tmp_path)
         assert results == []
+
+    def test_skips_non_image_files(self, tmp_path: Path) -> None:
+        _scaffold_dataset(tmp_path, images_per_class=1)
+        # Drop stray non-image files into a class folder.
+        stray_dir = tmp_path / ALL_CLASSES[0].folder_name
+        (stray_dir / "notes.txt").write_text("not an image")
+        (stray_dir / "README.md").write_text("# readme")
+
+        results = preprocess_directory(tmp_path)
+
+        assert len(results) == NUM_CLASSES  # strays ignored
+
+    def test_skips_subdirectories(self, tmp_path: Path) -> None:
+        _scaffold_dataset(tmp_path, images_per_class=1)
+        # A nested directory inside a class folder must be ignored.
+        (tmp_path / ALL_CLASSES[0].folder_name / "nested").mkdir()
+
+        results = preprocess_directory(tmp_path)
+
+        assert len(results) == NUM_CLASSES
+
+    def test_handles_uppercase_extensions(self, tmp_path: Path) -> None:
+        _scaffold_dataset(tmp_path, images_per_class=0)
+        _create_test_image(
+            tmp_path / ALL_CLASSES[0].folder_name / "IMG.JPG"
+        )
+
+        results = preprocess_directory(tmp_path)
+
+        assert len(results) == 1
