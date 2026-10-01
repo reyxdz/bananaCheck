@@ -13,8 +13,7 @@ class _MockInterpreter extends Mock implements Interpreter {}
 void _stubRun(_MockInterpreter interpreter, List<double> probabilities) {
   when(() => interpreter.run(any<Object>(), any<Object>())).thenAnswer(
     (invocation) {
-      final output =
-          invocation.positionalArguments[1] as List<List<double>>;
+      final output = invocation.positionalArguments[1] as List<List<double>>;
       output[0].setAll(0, probabilities);
     },
   );
