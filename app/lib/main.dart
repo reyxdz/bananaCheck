@@ -8,7 +8,7 @@ import 'screens/history_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/results_screen.dart';
 import 'services/inference_service.dart';
-import 'services/mock_inference_service.dart';
+import 'services/inference_service_factory.dart';
 import 'services/preferences_service.dart';
 import 'services/sqflite_storage_service.dart';
 import 'services/storage_service.dart';
@@ -18,10 +18,13 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final storageService = await SqfliteStorageService.instance();
   final preferencesService = await PreferencesService.instance();
+  // A21 integration: use the real on-device TFLite model, falling back to the
+  // mock until the validated .tflite is bundled in assets/model/.
+  final inferenceService = await createInferenceService();
 
   runApp(
     BananaClassifierApp(
-      inferenceService: MockInferenceService(),
+      inferenceService: inferenceService,
       storageService: storageService,
       preferencesService: preferencesService,
     ),
