@@ -139,8 +139,8 @@ void main() {
 
     expect(find.text('Bananalyze'), findsOneWidget);
     // The capture button shows the "Scan" label below the circular button.
-    expect(find.text('Scan'), findsOneWidget);
-    expect(find.text('History'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+    expect(find.byTooltip('History'), findsOneWidget);
   });
 
   testWidgets('history remains one tap from the scan screen', (tester) async {
@@ -152,7 +152,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('History'));
+    await tester.tap(find.byTooltip('History'));
     await tester.pumpAndSettle();
 
     expect(find.text('Scan History'), findsOneWidget);
@@ -176,7 +176,7 @@ void main() {
     expect(find.text('Camera access needed'), findsOneWidget);
     expect(find.text('Allow Camera'), findsOneWidget);
     // The Scan button should NOT be visible when denied.
-    expect(find.text('Scan'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsNothing);
   });
 
   testWidgets('shows open-settings view when permission is permanently denied',
@@ -194,7 +194,7 @@ void main() {
     expect(find.text('Camera is turned off'), findsOneWidget);
     expect(find.text('Open Settings'), findsOneWidget);
     // The Scan button should NOT be visible.
-    expect(find.text('Scan'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsNothing);
   });
 
   // ── A6-specific: camera error fallback in test environment ──
@@ -217,7 +217,7 @@ void main() {
     expect(find.text('No camera found on this device.'), findsOneWidget);
     expect(find.text('Try Again'), findsOneWidget);
     // Capture button with "Scan" label is still visible (permission granted).
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
   });
 
   // ── A7-specific: capture button tests ──
@@ -237,14 +237,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Capture button is rendered (label visible).
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
 
     // The camera icon is present inside the circular button.
     expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
 
     // Tapping does nothing because the camera isn't ready — no snackbar,
     // no navigation, no crash.
-    await tester.tap(find.text('Scan'));
+    await tester.tap(find.bySemanticsLabel('Scan'));
     await tester.pumpAndSettle();
 
     // Still on the camera screen, no crash or navigation occurred.
@@ -265,7 +265,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Capture button should not appear at all.
-    expect(find.text('Scan'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsNothing);
     expect(find.text('Camera access needed'), findsOneWidget);
   });
 
@@ -286,7 +286,7 @@ void main() {
     // with a short, plain-language label".
     // Both the camera icon and the "Scan" text label must be present.
     expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
   });
 
   // ── A32: first-launch onboarding ──
@@ -308,7 +308,7 @@ void main() {
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
     expect(prefs.hasCompletedOnboarding, isTrue);
   });
 
@@ -327,6 +327,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Know your bananas.'), findsNothing);
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+  });
+
+  testWidgets('Get Started finishes onboarding and Back cannot return to it',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await PreferencesService.instance();
+
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        preferencesService: prefs,
+      ),
+    );
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+    expect(prefs.hasCompletedOnboarding, isTrue);
+
+    // Onboarding was replaced, not pushed under the camera screen.
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    expect(navigator.canPop(), isFalse);
   });
 }
