@@ -203,24 +203,41 @@ class TestClassifyEndpoint:
 
 
 class TestGetInferenceServiceDependency:
-    def test_returns_503_when_model_cannot_be_loaded(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_returns_503_when_model_cannot_be_loaded(self, tmp_path: Path) -> None:
         """The dependency converts a load failure into a clean 503."""
-        monkeypatch.setenv("BANANA_LABELS_PATH", str(tmp_path / "absent.txt"))
-        monkeypatch.setenv("BANANA_MODEL_PATH", str(tmp_path / "absent.tflite"))
+        bogus = BackendConfig(
+            labels_path=tmp_path / "absent.txt",
+            model_path=tmp_path / "absent.tflite",
+        )
         _cached_inference_service.cache_clear()
+        try:
+            with pytest.raises(HTTPException) as excinfo:
+                get_inference_service(bogus)
+            assert excinfo.value.status_code == 503
+        finally:
+            _cached_inference_service.cache_clear()
 
-        with pytest.raises(HTTPException) as excinfo:
-            get_inference_service()
-        assert excinfo.value.status_code == 503
+    def test_app_config_drives_model_loading(self, tmp_path: Path) -> None:
+        """Regression: create_app(config) must not silently use the default model.
 
+        The inference service used to be cached from the environment-derived
+        config, so an app built with a custom ``model_path`` loaded the shipped
+        model anyway — a model-testing tool quietly testing the wrong model.
+        """
+        bogus = BackendConfig(
+            model_path=tmp_path / "absent.tflite",
+            labels_path=tmp_path / "absent.txt",
+        )
         _cached_inference_service.cache_clear()
-
-
-# ---------------------------------------------------------------------------
-# Upload validation (B23)
-# ---------------------------------------------------------------------------
+        try:
+            client = TestClient(create_app(bogus))
+            response = client.post(
+                "/classify",
+                files={"image": ("b.jpg", _jpeg_bytes(), "image/jpeg")},
+            )
+            assert response.status_code == 503
+        finally:
+            _cached_inference_service.cache_clear()
 
 
 class TestUploadValidation:
