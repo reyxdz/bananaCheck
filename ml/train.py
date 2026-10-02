@@ -56,7 +56,7 @@ from typing import Any
 
 import tensorflow as tf
 
-from ml.classes import NUM_CLASSES
+from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.config import MLConfig
 from ml.preprocess import require_directory
 
@@ -225,6 +225,8 @@ def load_datasets(
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
+        # Pin index order to ALL_CLASSES (== labels.txt), never folder luck.
+        class_names=[cls.folder_name for cls in ALL_CLASSES],
         shuffle=True,
         seed=42,
     )
@@ -233,6 +235,8 @@ def load_datasets(
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
+        # Pin index order to ALL_CLASSES (== labels.txt), never folder luck.
+        class_names=[cls.folder_name for cls in ALL_CLASSES],
         shuffle=False,
     )
 

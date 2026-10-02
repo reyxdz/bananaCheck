@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -63,13 +64,20 @@ def test_all_classes_covers_every_variety_ripeness_combination() -> None:
     assert set(ALL_CLASSES) == expected
 
 
-def test_all_classes_is_ordered_variety_first_then_ripeness() -> None:
-    """Validate the canonical variety-first, Unripe→Ripe→Overripe ordering."""
-    expected_order = [
-        BananaClass(variety, ripeness)
-        for variety in BananaVariety
-        for ripeness in RipenessStage
-    ]
+def test_all_classes_is_ordered_alphabetically_by_folder_name() -> None:
+    """Validate the canonical order: the model's output index order.
+
+    The shipped model was trained with Keras' ``image_dataset_from_directory``,
+    which numbers classes by sorted folder name.
+    """
+    expected_order = sorted(
+        (
+            BananaClass(variety, ripeness)
+            for variety in BananaVariety
+            for ripeness in RipenessStage
+        ),
+        key=lambda cls: cls.folder_name,
+    )
     assert expected_order == ALL_CLASSES
 
 
@@ -120,8 +128,9 @@ def test_index_to_class_then_class_to_index_is_identity() -> None:
 
 def test_class_to_index_returns_correct_index_for_first_and_last_class() -> None:
     """Spot-check that the boundary entries resolve to the expected indices."""
-    first = BananaClass(BananaVariety.CAVENDISH, RipenessStage.UNRIPE)
-    last = BananaClass(BananaVariety.SABA, RipenessStage.OVERRIPE)
+    # Alphabetical by folder name — the order the shipped model was trained in.
+    first = BananaClass(BananaVariety.CAVENDISH, RipenessStage.OVERRIPE)
+    last = BananaClass(BananaVariety.SENORITA, RipenessStage.UNRIPE)
     assert class_to_index(first) == 0
     assert class_to_index(last) == NUM_CLASSES - 1
 
@@ -178,3 +187,39 @@ def test_generate_labels_file_creates_parent_directories(tmp_path: Path) -> None
     output = tmp_path / "nested" / "dir" / "labels.txt"
     result = generate_labels_file(output)
     assert result.is_file()
+
+
+# ---------------------------------------------------------------------------
+# Model ↔ labels contract (A21)
+#
+# The shipped model's output index i must mean ALL_CLASSES[i], and the app's
+# labels.txt must list the same order — otherwise every scan is shown under
+# the wrong variety/ripeness.
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_APP_LABELS = _REPO_ROOT / "app" / "assets" / "model" / "labels.txt"
+_EVAL_METRICS = _REPO_ROOT / "ml" / "output" / "evaluation_metrics.json"
+
+
+def test_all_classes_follow_keras_directory_order() -> None:
+    """Keras' image_dataset_from_directory sorts class folders by name."""
+    names = [cls.folder_name for cls in ALL_CLASSES]
+    assert names == sorted(names)
+
+
+def test_app_labels_file_matches_all_classes() -> None:
+    lines = _APP_LABELS.read_text(encoding="utf-8").split()
+    assert lines == [cls.folder_name for cls in ALL_CLASSES]
+
+
+@pytest.mark.skipif(
+    not _EVAL_METRICS.exists(), reason="no evaluation run in ml/output"
+)
+def test_app_labels_match_the_evaluated_model_class_order() -> None:
+    """The evaluation run records the class order the model really uses."""
+    per_class = json.loads(_EVAL_METRICS.read_text(encoding="utf-8"))["per_class"]
+    evaluated = [entry["class"] for entry in per_class]
+    lines = _APP_LABELS.read_text(encoding="utf-8").split()
+    assert lines == evaluated
+

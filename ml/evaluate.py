@@ -57,6 +57,7 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
+from ml.classes import ALL_CLASSES
 from ml.config import MLConfig
 from ml.preprocess import require_directory
 
@@ -148,6 +149,8 @@ def load_test_dataset(
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
+        # Pin index order to ALL_CLASSES (== labels.txt), never folder luck.
+        class_names=[cls.folder_name for cls in ALL_CLASSES],
         shuffle=False,
     )
 

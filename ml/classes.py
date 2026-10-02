@@ -61,15 +61,22 @@ class BananaClass(NamedTuple):
 # Ordered class list  (defines model output index ordering)
 # ---------------------------------------------------------------------------
 #
-# Order: variety-first, then ripeness (Unripe → Ripe → Overripe).
-# This order MUST match the order used when training the model and is
-# reflected verbatim in ``app/assets/model/labels.txt``.
+# Order: alphabetical by folder name ("Cavendish_Overripe", "Cavendish_Ripe",
+# …, "Senorita_Unripe"). This is the order Keras'
+# ``image_dataset_from_directory`` assigns to class folders, which is how the
+# shipped model was trained — so model output index ``i`` is ``ALL_CLASSES[i]``.
+# Training/evaluation also pass this list explicitly as ``class_names`` so
+# the two can never drift. It is written verbatim to
+# ``app/assets/model/labels.txt``; changing it requires retraining the model.
 
-ALL_CLASSES: list[BananaClass] = [
-    BananaClass(variety, ripeness)
-    for variety in BananaVariety
-    for ripeness in RipenessStage
-]
+ALL_CLASSES: list[BananaClass] = sorted(
+    (
+        BananaClass(variety, ripeness)
+        for variety in BananaVariety
+        for ripeness in RipenessStage
+    ),
+    key=lambda cls: cls.folder_name,
+)
 
 NUM_CLASSES: int = len(ALL_CLASSES)  # 18
 
