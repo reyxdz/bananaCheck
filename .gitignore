@@ -19,10 +19,10 @@
 # Dataset and generated model artifacts
 ml/data/*
 !ml/data/README.md
+ml/data_split/
 *.h5
 *.keras
 *.tflite
-# The validated, shipped model is the one .tflite we do commit (A21).
 !app/assets/model/banana_classifier.tflite
 !app/assets/model/labels.example.txt
 !app/assets/model/README.md
@@ -42,9 +42,15 @@ worktrees/
 .DS_Store
 Thumbs.db
 
-# MCP servers / AI agent tooling (local only)
+# MCP server configs (local, per-developer — never commit)
 .mcp.json
+mcp.json
+**/mcp.json
+
+# Added by code-review-graph
 .code-review-graph/
+
+# code-review-graph tool integrations (per-developer hooks/skills/settings)
 .claude/
 .codebuddy/
 .cursor/
