@@ -1,4 +1,5 @@
 import 'package:banana_classifier/screens/onboarding_screen.dart';
+import 'package:banana_classifier/theme/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -171,6 +172,62 @@ void main() {
 
     await tapAndSettle(tester, 'Next');
     expect(showsAsset('page3.png'), isTrue);
+  });
+
+  // ── A34: extra coverage ──
+
+  testWidgets('Next on the first two pages never finishes onboarding',
+      (tester) async {
+    var finished = 0;
+    await pump(tester, onFinished: () => finished++);
+    await tapAndSettle(tester, 'Next');
+    await tapAndSettle(tester, 'Next');
+    expect(finished, 0);
+    expect(find.text('Get Started'), findsOneWidget);
+  });
+
+  testWidgets('Skip and Back meet the 48dp touch target (§7.4)',
+      (tester) async {
+    await pump(tester);
+    await tapAndSettle(tester, 'Next');
+
+    for (final label in ['Skip', 'Back']) {
+      final size = tester.getSize(
+        find.ancestor(
+          of: find.text(label),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+      expect(size.width, greaterThanOrEqualTo(48), reason: label);
+      expect(size.height, greaterThanOrEqualTo(48), reason: label);
+    }
+  });
+
+  testWidgets('active dot uses the primary color on light pages (§7.7)',
+      (tester) async {
+    await pump(tester);
+    await tapAndSettle(tester, 'Next');
+
+    final dots = tester
+        .widgetList<AnimatedContainer>(
+          find.descendant(
+            of: find.bySemanticsLabel('Page 2 of 3'),
+            matching: find.byType(AnimatedContainer),
+          ),
+        )
+        .map((dot) => (dot.decoration! as BoxDecoration).color)
+        .toList();
+
+    expect(dots, hasLength(3));
+    expect(dots[1], DesignTokens.primary);
+    expect(dots.where((c) => c == DesignTokens.primary), hasLength(1));
+  });
+
+  testWidgets('how-it-works page tells users they can upload a photo',
+      (tester) async {
+    await pump(tester);
+    await tapAndSettle(tester, 'Next');
+    expect(find.textContaining('upload a photo'), findsOneWidget);
   });
 
   testWidgets('copy stays jargon-free on every page (§7.3)', (tester) async {
