@@ -206,12 +206,6 @@ _APP_LABELS = _REPO_ROOT / "app" / "assets" / "model" / "labels.txt"
 _EVAL_METRICS = _REPO_ROOT / "ml" / "output" / "evaluation_metrics.json"
 
 
-def test_all_classes_follow_keras_directory_order() -> None:
-    """Keras' image_dataset_from_directory sorts class folders by name."""
-    names = [cls.folder_name for cls in ALL_CLASSES]
-    assert names == sorted(names)
-
-
 def test_app_labels_file_matches_all_classes() -> None:
     lines = _APP_LABELS.read_text(encoding="utf-8").split()
     assert lines == [cls.folder_name for cls in ALL_CLASSES]

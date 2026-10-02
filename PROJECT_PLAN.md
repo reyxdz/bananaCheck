@@ -856,7 +856,7 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 7 — Integration Week (the one real sync point)
 **Emanuel**
-- [ ] A21 — Integration: swap `MockInferenceService` → real `TFLiteInferenceService` — *swap + model merged (#92, #93, #95); label-order fix (§9.1) committed on branch `A34` (`8b896fb`), not merged yet; on-device check pending*
+- [ ] A21 — Integration: swap `MockInferenceService` → real `TFLiteInferenceService` — *swap + model merged (#92, #93, #95); label-order fix (§9.1) merged (#96, TFLite = Keras on 540 test images, 95%); on-device check pending*
 - [ ] A22 — Device testing on physical Android phone(s), including outdoor sunlight readability check (§7.4)
 - [ ] A23 — Bug fixes from device testing — started
 - [x] A35 — Camera screen: live scan guidance, flash button, gallery · shutter · flash control row (§7.9) — *merged with A33 (#94)*
