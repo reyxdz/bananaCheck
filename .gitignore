@@ -39,6 +39,17 @@ worktrees/
 .vscode/
 .DS_Store
 Thumbs.db
-# Added by code-review-graph
-.code-review-graph/
+
+# MCP servers / AI agent tooling (local only)
 .mcp.json
+.code-review-graph/
+.claude/
+.codebuddy/
+.cursor/
+.gemini/
+.qoder/
+opencode.json
+opencode.jsonc
+CLAUDE.md
+AGENTS.md
+GEMINI.md
