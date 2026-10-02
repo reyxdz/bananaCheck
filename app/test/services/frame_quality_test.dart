@@ -225,5 +225,70 @@ void main() {
       expect(tracker.condition, ScanCondition.searching);
       expect(tracker.update(bananaInView), ScanCondition.ready);
     });
+
+    group('fallback when no banana is found', () {
+      final start = DateTime(2026);
+      DateTime after(Duration d) => start.add(d);
+
+      test('keeps searching for the first few seconds', () {
+        final tracker = ScanConditionTracker();
+        tracker.update(nothingInView, at: start);
+        expect(
+          tracker.update(nothingInView, at: after(const Duration(seconds: 4))),
+          ScanCondition.searching,
+        );
+      });
+
+      test('switches to notFound after searching for 5 seconds', () {
+        final tracker = ScanConditionTracker();
+        tracker.update(nothingInView, at: start);
+        expect(
+          tracker.update(
+            nothingInView,
+            at: after(ScanConditionTracker.notFoundAfter),
+          ),
+          ScanCondition.notFound,
+        );
+      });
+
+      test('finding a banana clears the tip and restarts the clock', () {
+        final tracker = ScanConditionTracker();
+        tracker.update(nothingInView, at: start);
+        tracker.update(nothingInView, at: after(const Duration(seconds: 6)));
+        expect(tracker.condition, ScanCondition.notFound);
+
+        for (var i = 0; i < 6; i++) {
+          tracker.update(bananaInView, at: after(Duration(seconds: 7 + i)));
+        }
+        expect(tracker.condition, ScanCondition.ready);
+
+        // Banana leaves the frame: back to plain searching, not straight to
+        // the tip.
+        for (var i = 0; i < 6; i++) {
+          tracker.update(nothingInView, at: after(Duration(seconds: 13 + i)));
+        }
+        expect(tracker.condition, ScanCondition.searching);
+      });
+
+      test('too dark wins over the tip', () {
+        final tracker = ScanConditionTracker();
+        tracker.update(nothingInView, at: start);
+        // Brightness is smoothed, so the room has to stay dark a moment.
+        for (var i = 0; i < 6; i++) {
+          tracker.update(darkRoom, at: after(Duration(seconds: 6 + i)));
+        }
+        expect(tracker.condition, ScanCondition.tooDark);
+      });
+
+      test('reset restarts the clock', () {
+        final tracker = ScanConditionTracker();
+        tracker.update(nothingInView, at: start);
+        tracker.reset();
+        expect(
+          tracker.update(nothingInView, at: after(const Duration(seconds: 6))),
+          ScanCondition.searching,
+        );
+      });
+    });
   });
 }

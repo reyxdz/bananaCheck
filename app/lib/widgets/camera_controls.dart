@@ -15,6 +15,7 @@ class CameraControls extends StatelessWidget {
     required this.flashOn,
     this.isCapturing = false,
     this.shutterDimmed = false,
+    this.highlightGallery = false,
     super.key,
   });
 
@@ -34,6 +35,10 @@ class CameraControls extends StatelessWidget {
   /// discourage a bad scan. It still works if tapped.
   final bool shutterDimmed;
 
+  /// Draws attention to the gallery button — used when no banana has been
+  /// found for a while, as uploading a photo is the fallback.
+  final bool highlightGallery;
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -44,6 +49,7 @@ class CameraControls extends StatelessWidget {
               tooltip: 'Upload a Photo',
               icon: Icons.photo_library_outlined,
               onPressed: onGallery,
+              highlighted: highlightGallery,
             ),
           ),
         ),
@@ -159,12 +165,14 @@ class _SideButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.selected = false,
+    this.highlighted = false,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
   final bool selected;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -177,12 +185,18 @@ class _SideButton extends StatelessWidget {
       style: IconButton.styleFrom(
         fixedSize: const Size.square(DesignTokens.secondaryActionSize),
         foregroundColor: DesignTokens.primaryDark,
-        backgroundColor: selected ? DesignTokens.accent : DesignTokens.surface,
+        backgroundColor: selected
+            ? DesignTokens.accent
+            : highlighted
+                ? DesignTokens.primaryLight
+                : DesignTokens.surface,
         disabledForegroundColor: DesignTokens.border,
         disabledBackgroundColor: DesignTokens.surface,
         side: BorderSide(
           color: onPressed == null ? DesignTokens.border : DesignTokens.primary,
-          width: DesignTokens.borderWidth,
+          width: highlighted && onPressed != null
+              ? DesignTokens.highlightBorderWidth
+              : DesignTokens.borderWidth,
         ),
       ),
     );

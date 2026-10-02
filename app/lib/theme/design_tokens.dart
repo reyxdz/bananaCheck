@@ -80,13 +80,14 @@ abstract final class DesignTokens {
   static const Color cameraDim = Color(0x8C000000);
   static const Color cameraPill = Color(0xB3000000);
   static const Color onCamera = Colors.white;
-  // Brighter than primary/amber tokens so they read on a live video feed.
-  static const Color scanReady = Color(0xFF66BB6A);
+  // Bright tones so they read on a live video feed: blue = banana detected.
+  static const Color scanDetected = Color(0xFF42A5F5);
   static const Color scanWarning = Color(0xFFFFB300);
   static const double bracketArm = 32;
   static const double bracketStroke = 4;
   static const double hintGap = 12;
   static const double shutterDimmedOpacity = 0.45;
+  static const double highlightBorderWidth = 3;
 
   // Onboarding (§7.7) — natural green, warm cream, muted yellow
   static const Color onboardingBackground = Color(0xFFF7F5EF);
@@ -102,6 +103,9 @@ abstract final class DesignTokens {
   static const double onboardingStepBadgeSize = 36;
   static const double onboardingButtonHeight = 56;
   static const double onboardingMinImageHeight = 160;
+
+  // Debug-only "DEMO" ribbon shown when the real model isn't loaded.
+  static const Color demoBanner = Color(0xFFD84315);
 
   // Semantic Colors
   static const Color errorBackground = Color(0xFFFDECEC);
