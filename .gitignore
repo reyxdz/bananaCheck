@@ -22,6 +22,8 @@ ml/data/*
 *.h5
 *.keras
 *.tflite
+# The validated, shipped model is the one .tflite we do commit (A21).
+!app/assets/model/banana_classifier.tflite
 !app/assets/model/labels.example.txt
 !app/assets/model/README.md
 

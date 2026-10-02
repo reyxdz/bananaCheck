@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/analyzing_screen.dart';
@@ -13,6 +14,7 @@ import 'services/preferences_service.dart';
 import 'services/sqflite_storage_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
+import 'theme/design_tokens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,8 @@ void main() async {
       inferenceService: inferenceService,
       storageService: storageService,
       preferencesService: preferencesService,
+      // Debug builds only: make a missing model impossible to miss.
+      demoMode: kDebugMode && isDemoInference(inferenceService),
     ),
   );
 }
@@ -36,6 +40,7 @@ class BananaClassifierApp extends StatelessWidget {
     required this.inferenceService,
     required this.storageService,
     this.preferencesService,
+    this.demoMode = false,
     super.key,
   });
 
@@ -44,6 +49,10 @@ class BananaClassifierApp extends StatelessWidget {
 
   /// When null (e.g. in tests), onboarding is skipped entirely.
   final PreferencesService? preferencesService;
+
+  /// Shows a "DEMO" corner ribbon on every screen — set when the real model
+  /// failed to load and results come from [MockInferenceService].
+  final bool demoMode;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +66,14 @@ class BananaClassifierApp extends StatelessWidget {
       title: 'Bananalyze',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      builder: demoMode
+          ? (context, child) => Banner(
+                message: 'DEMO',
+                location: BannerLocation.topStart,
+                color: DesignTokens.demoBanner,
+                child: child!,
+              )
+          : null,
       home: prefs == null || prefs.hasCompletedOnboarding
           ? home
           : Builder(
