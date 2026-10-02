@@ -11,10 +11,9 @@ Design notes
   require a multi-hundred-megabyte dependency.
 - :class:`InferenceService` takes an injectable ``predict`` callable, so the
   decode/preprocess path is testable with a stub predictor.
-- Preprocessing mirrors the training contract: RGB, resize to the model's square
-  input, scale to ``[0, 1]``.  Bilinear resampling is used to match the
-  ``tf.image.resize`` default used during training.  (Formalising this into a
-  shared, parity-tested module is task B20.)
+- Preprocessing lives in :mod:`backend.app.services.preprocessing` (B20), which
+  is parity-tested against ``ml/preprocess.py`` so the backend, the training
+  pipeline and the Dart app cannot drift apart.
 """
 
 from __future__ import annotations
