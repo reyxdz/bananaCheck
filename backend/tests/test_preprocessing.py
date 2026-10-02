@@ -12,10 +12,12 @@ import pytest
 from PIL import Image
 
 from backend.app.services.preprocessing import (
+    ALLOWED_IMAGE_FORMATS,
     DEFAULT_INPUT_SIZE,
     ML_PREPROCESS_RESAMPLE,
     TRAINING_RESAMPLE,
     InvalidImageError,
+    UnsupportedImageFormatError,
     preprocess_bytes,
     preprocess_pil,
 )
@@ -150,3 +152,35 @@ class TestResampleFilters:
             preprocess_pil(img),
             preprocess_pil(img, resample=TRAINING_RESAMPLE),
         )
+
+
+# ---------------------------------------------------------------------------
+# Upload format validation (B23)
+# ---------------------------------------------------------------------------
+
+
+class TestFormatValidation:
+    def _encode(self, fmt: str) -> bytes:
+        buf = io.BytesIO()
+        _image(32, 32).save(buf, format=fmt)
+        return buf.getvalue()
+
+    def test_allowed_formats_are_jpeg_and_png(self) -> None:
+        assert frozenset({"JPEG", "PNG"}) == ALLOWED_IMAGE_FORMATS
+
+    @pytest.mark.parametrize("fmt", ["JPEG", "PNG"])
+    def test_accepts_allowed_formats(self, fmt: str) -> None:
+        assert preprocess_bytes(self._encode(fmt), size=16).shape == (1, 16, 16, 3)
+
+    @pytest.mark.parametrize("fmt", ["BMP", "GIF", "TIFF", "WEBP"])
+    def test_rejects_disallowed_formats(self, fmt: str) -> None:
+        with pytest.raises(UnsupportedImageFormatError):
+            preprocess_bytes(self._encode(fmt), size=16)
+
+    def test_unsupported_format_is_an_invalid_image_error(self) -> None:
+        """Subclassing keeps existing broad catches working."""
+        assert issubclass(UnsupportedImageFormatError, InvalidImageError)
+
+    def test_check_can_be_disabled(self) -> None:
+        batch = preprocess_bytes(self._encode("BMP"), size=16, allowed_formats=None)
+        assert batch.shape == (1, 16, 16, 3)
