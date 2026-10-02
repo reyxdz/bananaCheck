@@ -13,7 +13,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 
 from ..config import BackendConfig, get_config
 from ..models.schemas import ClassificationResponse
@@ -23,8 +31,14 @@ from ..services.inference import (
     ModelUnavailableError,
     load_tflite_predictor,
 )
+from ..services.preprocessing import UnsupportedImageFormatError
 
 router = APIRouter(tags=["classify"])
+
+
+def get_backend_config(request: Request) -> BackendConfig:
+    """Return the config the app was created with (set in ``create_app``)."""
+    return request.app.state.config
 
 
 def build_inference_service(config: BackendConfig) -> InferenceService:
@@ -72,17 +86,44 @@ def get_inference_service() -> InferenceService:
 async def classify(
     image: UploadFile = File(description="Banana image (JPEG or PNG)."),
     service: InferenceService = Depends(get_inference_service),
+    config: BackendConfig = Depends(get_backend_config),
 ) -> ClassificationResponse:
     """Run the bundled TFLite model over one uploaded image."""
+
+    # Size is checked before decoding so an oversized payload never reaches the
+    # image decoder (B23).
+    declared_size = image.size
+    if declared_size is not None and declared_size > config.max_upload_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=(
+                f"Image is {declared_size} bytes; the limit is "
+                f"{config.max_upload_bytes} bytes."
+            ),
+        )
+
     contents = await image.read()
     if not contents:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
         )
+    if len(contents) > config.max_upload_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=(
+                f"Image is {len(contents)} bytes; the limit is "
+                f"{config.max_upload_bytes} bytes."
+            ),
+        )
 
     try:
         return service.classify(contents)
+    except UnsupportedImageFormatError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(exc),
+        ) from exc
     except InvalidImageError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
