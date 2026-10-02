@@ -9,6 +9,7 @@ _ENV_VARS = (
     "BANANA_LABELS_PATH",
     "BANANA_CONFIDENCE_THRESHOLD",
     "BANANA_CORS_ORIGINS",
+    "BANANA_MAX_UPLOAD_BYTES",
 )
 
 
@@ -36,6 +37,13 @@ class TestBackendConfig:
     def test_rejects_out_of_range_threshold(self, threshold: float) -> None:
         with pytest.raises(ValueError, match="confidence_threshold"):
             BackendConfig(confidence_threshold=threshold)
+
+    def test_default_max_upload_bytes_is_20mb(self) -> None:
+        assert BackendConfig().max_upload_bytes == 20 * 1024 * 1024
+
+    def test_rejects_non_positive_max_upload_bytes(self) -> None:
+        with pytest.raises(ValueError, match="max_upload_bytes"):
+            BackendConfig(max_upload_bytes=0)
 
     def test_rejects_empty_cors_origins(self) -> None:
         with pytest.raises(ValueError, match="cors_allow_origins"):
@@ -83,6 +91,7 @@ class TestGetConfig:
         monkeypatch.setenv("BANANA_MODEL_PATH", "/models/m.tflite")
         monkeypatch.setenv("BANANA_LABELS_PATH", "/models/labels.txt")
         monkeypatch.setenv("BANANA_CONFIDENCE_THRESHOLD", "0.7")
+        monkeypatch.setenv("BANANA_MAX_UPLOAD_BYTES", "1234")
         monkeypatch.setenv(
             "BANANA_CORS_ORIGINS",
             "http://localhost:3000, http://example.test",
@@ -93,6 +102,7 @@ class TestGetConfig:
         assert config.model_path == Path("/models/m.tflite")
         assert config.labels_path == Path("/models/labels.txt")
         assert config.confidence_threshold == 0.7
+        assert config.max_upload_bytes == 1234
         assert config.cors_allow_origins == (
             "http://localhost:3000",
             "http://example.test",

@@ -42,9 +42,20 @@ TRAINING_RESAMPLE = Image.BILINEAR
 #: LANCZOS — matches ``ml.preprocess.resize_image``.
 ML_PREPROCESS_RESAMPLE = Image.LANCZOS
 
+#: Formats accepted on upload — same set the app accepts (§7.8).
+ALLOWED_IMAGE_FORMATS: frozenset[str] = frozenset({"JPEG", "PNG"})
+
 
 class InvalidImageError(ValueError):
     """Raised when bytes cannot be decoded as an image."""
+
+
+class UnsupportedImageFormatError(InvalidImageError):
+    """Raised when an image decodes but is not an accepted format (B23).
+
+    A subclass of :class:`InvalidImageError` so existing callers that catch the
+    base class keep working, while the router can map it to HTTP 415.
+    """
 
 
 def preprocess_pil(
@@ -65,17 +76,32 @@ def preprocess_bytes(
     image_bytes: bytes,
     size: int = DEFAULT_INPUT_SIZE,
     resample: int = TRAINING_RESAMPLE,
+    allowed_formats: frozenset[str] | None = ALLOWED_IMAGE_FORMATS,
 ) -> np.ndarray:
     """Decode *image_bytes* into a batched ``(1, size, size, 3)`` float32 array.
 
+    The format is validated against the **decoded** image rather than the
+    client-supplied MIME type, which can be wrong or spoofed. Pass
+    ``allowed_formats=None`` to skip the check.
+
     Raises
     ------
+    UnsupportedImageFormatError
+        If the image decodes but its format is not in *allowed_formats*.
     InvalidImageError
         If the bytes are not a decodable image.
     """
     try:
         with Image.open(io.BytesIO(image_bytes)) as img:
+            image_format = img.format
+            if allowed_formats is not None and image_format not in allowed_formats:
+                raise UnsupportedImageFormatError(
+                    f"Unsupported image format {image_format!r}; "
+                    f"expected one of {sorted(allowed_formats)}."
+                )
             array = preprocess_pil(img, size=size, resample=resample)
+    except UnsupportedImageFormatError:
+        raise
     except (UnidentifiedImageError, OSError, ValueError) as exc:
         raise InvalidImageError(f"Could not decode image: {exc}") from exc
 

@@ -35,6 +35,8 @@ _APP_MODEL_DIR = _REPO_ROOT / "app" / "assets" / "model"
 _DEFAULT_MODEL_PATH = _APP_MODEL_DIR / "banana_classifier.tflite"
 _DEFAULT_LABELS_PATH = _APP_MODEL_DIR / "labels.txt"
 _DEFAULT_CONFIDENCE_THRESHOLD = 0.5
+#: Reject uploads larger than this. 20 MB matches the app's limit (§7.8).
+_DEFAULT_MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 _DEFAULT_CORS_ORIGINS: tuple[str, ...] = (
     "http://localhost",
     "http://localhost:8000",
@@ -67,6 +69,9 @@ class BackendConfig:
         unreliable (matches the app's low-confidence gate).
     cors_allow_origins:
         Origins permitted by the CORS middleware. Localhost-only by default.
+    max_upload_bytes:
+        Largest accepted upload for ``POST /classify``; bigger payloads are
+        rejected with HTTP 413 before any decoding happens (B23).
     """
 
     title: str = "Banana Classifier Model Management"
@@ -75,12 +80,15 @@ class BackendConfig:
     labels_path: Path = field(default_factory=lambda: _DEFAULT_LABELS_PATH)
     confidence_threshold: float = _DEFAULT_CONFIDENCE_THRESHOLD
     cors_allow_origins: tuple[str, ...] = _DEFAULT_CORS_ORIGINS
+    max_upload_bytes: int = _DEFAULT_MAX_UPLOAD_BYTES
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.confidence_threshold <= 1.0:
             raise ValueError("confidence_threshold must be in [0, 1].")
         if not self.cors_allow_origins:
             raise ValueError("cors_allow_origins must not be empty.")
+        if self.max_upload_bytes <= 0:
+            raise ValueError("max_upload_bytes must be a positive integer.")
 
     def load_labels(self) -> list[str]:
         """Return the class labels from ``labels_path`` in file order.
@@ -122,6 +130,8 @@ def get_config() -> BackendConfig:
         overrides["labels_path"] = Path(labels_path)
     if threshold := os.getenv("BANANA_CONFIDENCE_THRESHOLD"):
         overrides["confidence_threshold"] = float(threshold)
+    if max_bytes := os.getenv("BANANA_MAX_UPLOAD_BYTES"):
+        overrides["max_upload_bytes"] = int(max_bytes)
     if origins := os.getenv("BANANA_CORS_ORIGINS"):
         overrides["cors_allow_origins"] = _split_origins(origins)
     return BackendConfig(**overrides)

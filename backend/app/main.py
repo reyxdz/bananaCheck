@@ -11,6 +11,9 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
         title=config.title,
         version=config.version,
     )
+    # Make the active config reachable from request handlers, so an app built
+    # with a custom BackendConfig actually uses it (see get_backend_config).
+    app.state.config = config
     # Dev-only CORS: the shipped app never calls this backend, so origins are
     # restricted to local development tools (Swagger UI, browser clients).
     app.add_middleware(
