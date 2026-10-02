@@ -55,3 +55,8 @@ mcp.json
 .cursor/
 .gemini/
 .qoder/
+opencode.json
+opencode.jsonc
+CLAUDE.md
+AGENTS.md
+GEMINI.md
