@@ -215,3 +215,63 @@ class TestGetInferenceServiceDependency:
         assert excinfo.value.status_code == 503
 
         _cached_inference_service.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# Upload validation (B23)
+# ---------------------------------------------------------------------------
+
+
+class TestUploadValidation:
+    def test_rejects_oversized_upload_with_413(self) -> None:
+        """A payload above max_upload_bytes is refused before decoding."""
+        app = create_app(BackendConfig(max_upload_bytes=512))
+        app.dependency_overrides[get_inference_service] = lambda: _stub_service(
+            [1.0, 0.0, 0.0]
+        )
+        client = TestClient(app)
+
+        big = _jpeg_bytes(size=256)  # comfortably over 512 bytes
+        assert len(big) > 512
+
+        response = client.post(
+            "/classify", files={"image": ("big.jpg", big, "image/jpeg")}
+        )
+
+        assert response.status_code == 413
+
+    def test_accepts_upload_within_the_limit(self) -> None:
+        app = create_app(BackendConfig(max_upload_bytes=10 * 1024 * 1024))
+        app.dependency_overrides[get_inference_service] = lambda: _stub_service(
+            [0.0, 1.0, 0.0]
+        )
+        client = TestClient(app)
+
+        response = client.post(
+            "/classify", files={"image": ("ok.jpg", _jpeg_bytes(), "image/jpeg")}
+        )
+
+        assert response.status_code == 200
+
+    def test_rejects_unsupported_format_with_415(self) -> None:
+        """A decodable but disallowed format (BMP) gets 415, not 400."""
+        buf = io.BytesIO()
+        Image.new("RGB", (32, 32), (10, 20, 30)).save(buf, format="BMP")
+
+        client = _client(_stub_service([1.0, 0.0, 0.0]))
+        response = client.post(
+            "/classify", files={"image": ("sneaky.jpg", buf.getvalue(), "image/jpeg")}
+        )
+
+        assert response.status_code == 415
+
+    def test_png_upload_is_accepted(self) -> None:
+        buf = io.BytesIO()
+        Image.new("RGB", (32, 32), (90, 140, 40)).save(buf, format="PNG")
+
+        client = _client(_stub_service([0.0, 0.0, 1.0]))
+        response = client.post(
+            "/classify", files={"image": ("ok.png", buf.getvalue(), "image/png")}
+        )
+
+        assert response.status_code == 200
