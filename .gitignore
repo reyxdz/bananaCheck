@@ -19,6 +19,7 @@
 # Dataset and generated model artifacts
 ml/data/*
 !ml/data/README.md
+ml/data_split/
 *.h5
 *.keras
 *.tflite
@@ -39,6 +40,18 @@ worktrees/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# MCP server configs (local, per-developer — never commit)
+.mcp.json
+mcp.json
+**/mcp.json
+
 # Added by code-review-graph
 .code-review-graph/
-.mcp.json
+
+# code-review-graph tool integrations (per-developer hooks/skills/settings)
+.claude/
+.codebuddy/
+.cursor/
+.gemini/
+.qoder/
