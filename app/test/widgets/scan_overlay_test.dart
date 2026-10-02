@@ -30,17 +30,30 @@ void main() {
       );
     });
 
-    test('ready is green, dark is amber, and each has its own icon', () {
+    test('detected is blue, dark is amber, and each has its own icon', () {
       final searching = hint(ScanCondition.searching);
       final ready = hint(ScanCondition.ready);
       final dark = hint(ScanCondition.tooDark);
+      final notFound = hint(ScanCondition.notFound);
 
-      expect(ready.color, DesignTokens.scanReady);
+      expect(ready.color, DesignTokens.scanDetected);
+      // Blue: the blue channel clearly dominates.
+      expect(
+        DesignTokens.scanDetected.blue,
+        greaterThan(DesignTokens.scanDetected.red),
+      );
       expect(dark.color, DesignTokens.scanWarning);
       // Colour is never the only cue (§7.4).
       expect(
-        {searching.icon, ready.icon, dark.icon},
-        hasLength(3),
+        {searching.icon, ready.icon, dark.icon, notFound.icon},
+        hasLength(4),
+      );
+    });
+
+    test('fallback tip offers moving closer or uploading', () {
+      expect(
+        hint(ScanCondition.notFound).text,
+        "Can't find a banana? Move closer or upload a photo",
       );
     });
   });
@@ -128,6 +141,16 @@ void main() {
       final frame = ScanOverlay.frameFor(const Size(400, 600));
       expect(frame.width, DesignTokens.reticleWidth);
       expect(frame.height, DesignTokens.reticleHeight);
+    });
+
+    testWidgets('fallback tip replaces the searching hint', (tester) async {
+      await pumpOverlay(tester, ScanCondition.notFound);
+      expect(
+        find.text("Can't find a banana? Move closer or upload a photo"),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.search_off_rounded), findsOneWidget);
+      expect(find.text('Point at a banana'), findsNothing);
     });
   });
 }

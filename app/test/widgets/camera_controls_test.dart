@@ -150,4 +150,47 @@ void main() {
     );
     expect(gallery.onPressed, isNull);
   });
+
+  testWidgets('gallery can be highlighted as the no-banana fallback',
+      (tester) async {
+    Future<ButtonStyle> galleryStyle({required bool highlight}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CameraControls(
+              onGallery: () {},
+              onShutter: () {},
+              onFlash: () {},
+              flashOn: false,
+              highlightGallery: highlight,
+            ),
+          ),
+        ),
+      );
+      return tester
+          .widget<IconButton>(
+            find.ancestor(
+              of: find.byTooltip('Upload a Photo'),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .style!;
+    }
+
+    final normal = await galleryStyle(highlight: false);
+    final highlighted = await galleryStyle(highlight: true);
+
+    expect(
+      normal.backgroundColor!.resolve({}),
+      DesignTokens.surface,
+    );
+    expect(
+      highlighted.backgroundColor!.resolve({}),
+      DesignTokens.primaryLight,
+    );
+    expect(
+      highlighted.side!.resolve({})!.width,
+      DesignTokens.highlightBorderWidth,
+    );
+  });
 }
