@@ -25,8 +25,14 @@ class ScanHint {
         ),
       ScanCondition.ready => const ScanHint(
           Icons.check_circle_rounded,
-          DesignTokens.scanReady,
+          DesignTokens.scanDetected,
           'Looks good, tap Scan',
+        ),
+      // Fallback after searching for a while: never blocks Scan (§7.1).
+      ScanCondition.notFound => const ScanHint(
+          Icons.search_off_rounded,
+          DesignTokens.scanWarning,
+          "Can't find a banana? Move closer or upload a photo",
         ),
       // Only suggest the flash when it would actually help.
       ScanCondition.tooDark when hasTorch && !torchOn => const ScanHint(
@@ -50,7 +56,7 @@ class ScanHint {
 /// Live-preview overlay: dims everything outside the scan frame, draws corner
 /// brackets around it, and shows a single hint pill above it.
 ///
-/// Brackets are white while searching, green when a banana is in frame and
+/// Brackets are white while searching, blue when a banana is in frame and
 /// amber when the light is poor.
 class ScanOverlay extends StatelessWidget {
   const ScanOverlay({
@@ -87,8 +93,10 @@ class ScanOverlay extends StatelessWidget {
       hasTorch: hasTorch,
     );
     final bracketColor = switch (condition) {
-      ScanCondition.searching => DesignTokens.onCamera,
-      ScanCondition.ready => DesignTokens.scanReady,
+      ScanCondition.searching ||
+      ScanCondition.notFound =>
+        DesignTokens.onCamera,
+      ScanCondition.ready => DesignTokens.scanDetected,
       ScanCondition.tooDark => DesignTokens.scanWarning,
     };
 
