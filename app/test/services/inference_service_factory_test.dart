@@ -48,4 +48,18 @@ void main() {
     final result = await service.classify(File('unused.jpg'));
     expect(result, isA<ClassificationResult>());
   });
+
+  test('isDemoInference flags only the mock fallback', () {
+    expect(isDemoInference(MockInferenceService()), isTrue);
+    expect(isDemoInference(_FakeRealService()), isFalse);
+  });
+
+  test('a failed model load ends up in demo mode', () async {
+    final service = await buildInferenceService(
+      loadReal: () async => throw Exception('missing .tflite'),
+      loadMock: MockInferenceService.new,
+    );
+
+    expect(isDemoInference(service), isTrue);
+  });
 }

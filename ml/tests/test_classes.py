@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -190,3 +191,33 @@ def test_generate_labels_file_creates_parent_directories(tmp_path: Path) -> None
     output = tmp_path / "nested" / "dir" / "labels.txt"
     result = generate_labels_file(output)
     assert result.is_file()
+
+
+# ---------------------------------------------------------------------------
+# Model ↔ labels contract (A21)
+#
+# The shipped model's output index i must mean ALL_CLASSES[i], and the app's
+# labels.txt must list the same order — otherwise every scan is shown under
+# the wrong variety/ripeness.
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_APP_LABELS = _REPO_ROOT / "app" / "assets" / "model" / "labels.txt"
+_EVAL_METRICS = _REPO_ROOT / "ml" / "output" / "evaluation_metrics.json"
+
+
+def test_app_labels_file_matches_all_classes() -> None:
+    lines = _APP_LABELS.read_text(encoding="utf-8").split()
+    assert lines == [cls.folder_name for cls in ALL_CLASSES]
+
+
+@pytest.mark.skipif(
+    not _EVAL_METRICS.exists(), reason="no evaluation run in ml/output"
+)
+def test_app_labels_match_the_evaluated_model_class_order() -> None:
+    """The evaluation run records the class order the model really uses."""
+    per_class = json.loads(_EVAL_METRICS.read_text(encoding="utf-8"))["per_class"]
+    evaluated = [entry["class"] for entry in per_class]
+    lines = _APP_LABELS.read_text(encoding="utf-8").split()
+    assert lines == evaluated
+

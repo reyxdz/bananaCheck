@@ -9,3 +9,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.coverage.run]
 branch = true
 omit = ["*/tests/*", "*/.venv/*"]
+
+[tool.pyrefly]
+# Resolve imports from the ML virtualenv (TensorFlow, pytest, matplotlib, ...).
+python-interpreter-path = "ml/.venv/bin/python"
+preset = "basic"

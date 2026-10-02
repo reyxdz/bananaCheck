@@ -137,8 +137,12 @@ class _CameraScreenState extends State<CameraScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       // Release the camera so other apps (or the OS settings screen) can
-      // use it.
-      _disposeCamera();
+      // use it. Rebuild too, so the preview never paints a disposed camera.
+      if (mounted) {
+        setState(_disposeCamera);
+      } else {
+        _disposeCamera();
+      }
     } else if (state == AppLifecycleState.resumed) {
       if (_permissionState == CameraPermissionState.permanentlyDenied ||
           _permissionState == CameraPermissionState.denied) {
@@ -567,6 +571,8 @@ class _CameraScreenState extends State<CameraScreen>
               flashOn: _torchOn,
               isCapturing: _isCapturing,
               shutterDimmed: _condition == ScanCondition.tooDark,
+              // No banana for a while → point at the upload fallback.
+              highlightGallery: _condition == ScanCondition.notFound,
             ),
           ),
         ],

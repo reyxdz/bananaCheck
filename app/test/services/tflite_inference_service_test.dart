@@ -220,4 +220,33 @@ void main() {
       verify(() => interpreter.close()).called(1);
     });
   });
+
+  // ── A21: the bundled assets must agree with the trained model ──
+  group('shipped model assets', () {
+    final labels = TFLiteInferenceService.parseLabels(
+      File(TFLiteInferenceService.defaultLabelsAsset).readAsStringSync(),
+    );
+
+    test('labels.txt lists all 18 variety × ripeness classes', () {
+      expect(labels, hasLength(18));
+      expect(labels.toSet(), hasLength(18));
+      for (final label in labels) {
+        expect(label, matches(RegExp(r'^[A-Z][a-z]+_(Unripe|Ripe|Overripe)$')));
+      }
+    });
+
+    test('labels.txt is in the model output order (alphabetical)', () {
+      // The model was trained with Keras' image_dataset_from_directory, which
+      // numbers classes by sorted folder name. Any other order shows every
+      // scan under the wrong variety/ripeness.
+      expect(labels, [...labels]..sort());
+    });
+
+    test('the validated model file is bundled', () {
+      final model = File(TFLiteInferenceService.defaultModelAsset);
+      expect(model.existsSync(), isTrue);
+      // A real MobileNetV2 export is several MB — not an empty placeholder.
+      expect(model.lengthSync(), greaterThan(1024 * 1024));
+    });
+  });
 }

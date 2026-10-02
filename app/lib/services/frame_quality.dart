@@ -10,6 +10,10 @@ enum ScanCondition {
 
   /// Too dark for a reliable scan.
   tooDark,
+
+  /// Still searching after [ScanConditionTracker.notFoundAfter] — time for a
+  /// fallback tip (move closer, or upload a photo instead).
+  notFound,
 }
 
 /// Cheap per-frame measurements taken from the live camera stream.
@@ -108,30 +112,48 @@ class ScanConditionTracker {
   /// Weight of the newest frame in the running average.
   static const smoothing = 0.4;
 
+  /// How long to keep searching before showing the fallback tip.
+  static const notFoundAfter = Duration(seconds: 5);
+
   double? _brightness;
   double? _coverage;
   ScanCondition _condition = ScanCondition.searching;
 
+  /// When the current unbroken stretch of searching began.
+  DateTime? _searchingSince;
+
   ScanCondition get condition => _condition;
 
-  ScanCondition update(FrameStats stats) {
+  /// Feeds one frame's stats in. [at] is the frame time (defaults to now;
+  /// tests pass it explicitly).
+  ScanCondition update(FrameStats stats, {DateTime? at}) {
+    final now = at ?? DateTime.now();
     _brightness = _blend(_brightness, stats.brightness);
     _coverage = _blend(_coverage, stats.bananaCoverage);
 
     final wasDark = _condition == ScanCondition.tooDark;
     final dark = wasDark ? _brightness! < darkExit : _brightness! < darkEnter;
 
-    _condition = dark
-        ? ScanCondition.tooDark
-        : _coverage! >= readyCoverage
-            ? ScanCondition.ready
-            : ScanCondition.searching;
+    if (dark) {
+      // Poor light is the real problem — fix that first, restart the clock.
+      _searchingSince = null;
+      _condition = ScanCondition.tooDark;
+    } else if (_coverage! >= readyCoverage) {
+      _searchingSince = null;
+      _condition = ScanCondition.ready;
+    } else {
+      _searchingSince ??= now;
+      _condition = now.difference(_searchingSince!) >= notFoundAfter
+          ? ScanCondition.notFound
+          : ScanCondition.searching;
+    }
     return _condition;
   }
 
   void reset() {
     _brightness = null;
     _coverage = null;
+    _searchingSince = null;
     _condition = ScanCondition.searching;
   }
 

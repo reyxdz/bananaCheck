@@ -10,6 +10,7 @@ void main() {
     bool shutterDimmed = false,
     bool shutterEnabled = true,
     bool flashEnabled = true,
+    bool galleryEnabled = true,
   }) async {
     final taps = <String>[];
     await tester.pumpWidget(
@@ -19,7 +20,7 @@ void main() {
             child: SizedBox(
               width: 360,
               child: CameraControls(
-                onGallery: () => taps.add('gallery'),
+                onGallery: galleryEnabled ? () => taps.add('gallery') : null,
                 onShutter: shutterEnabled ? () => taps.add('shutter') : null,
                 onFlash: flashEnabled ? () => taps.add('flash') : null,
                 flashOn: flashOn,
@@ -116,5 +117,80 @@ void main() {
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
     }
+  });
+
+  // ── A34: upload (gallery) button ──
+
+  testWidgets('gallery button is announced as "Upload a Photo"',
+      (tester) async {
+    await pumpControls(tester);
+    expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+    // Screen readers read the tooltip on an enabled button.
+    expect(
+      tester.getSemantics(find.byIcon(Icons.photo_library_outlined)),
+      containsSemantics(
+        tooltip: 'Upload a Photo',
+        isButton: true,
+        isEnabled: true,
+      ),
+    );
+  });
+
+  testWidgets('disabled gallery button ignores taps', (tester) async {
+    final taps = await pumpControls(tester, galleryEnabled: false);
+
+    await tester.tap(find.byTooltip('Upload a Photo'), warnIfMissed: false);
+
+    expect(taps, isEmpty);
+    final gallery = tester.widget<IconButton>(
+      find.ancestor(
+        of: find.byTooltip('Upload a Photo'),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(gallery.onPressed, isNull);
+  });
+
+  testWidgets('gallery can be highlighted as the no-banana fallback',
+      (tester) async {
+    Future<ButtonStyle> galleryStyle({required bool highlight}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CameraControls(
+              onGallery: () {},
+              onShutter: () {},
+              onFlash: () {},
+              flashOn: false,
+              highlightGallery: highlight,
+            ),
+          ),
+        ),
+      );
+      return tester
+          .widget<IconButton>(
+            find.ancestor(
+              of: find.byTooltip('Upload a Photo'),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .style!;
+    }
+
+    final normal = await galleryStyle(highlight: false);
+    final highlighted = await galleryStyle(highlight: true);
+
+    expect(
+      normal.backgroundColor!.resolve({}),
+      DesignTokens.surface,
+    );
+    expect(
+      highlighted.backgroundColor!.resolve({}),
+      DesignTokens.primaryLight,
+    );
+    expect(
+      highlighted.side!.resolve({})!.width,
+      DesignTokens.highlightBorderWidth,
+    );
   });
 }
