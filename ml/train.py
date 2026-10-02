@@ -56,7 +56,7 @@ from typing import Any
 
 import tensorflow as tf
 
-from ml.classes import NUM_CLASSES
+from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.config import MLConfig
 from ml.preprocess import require_directory
 
@@ -220,11 +220,17 @@ def load_datasets(
     require_directory(train_dir)
     require_directory(val_dir)
 
+    # Pin the class → index mapping to ALL_CLASSES instead of relying on the
+    # implicit alphabetical sort, so the model's output indices always match
+    # the shipped labels.txt.
+    class_names = [banana_class.folder_name for banana_class in ALL_CLASSES]
+
     train_ds = tf.keras.utils.image_dataset_from_directory(
         train_dir,
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
+        class_names=class_names,
         shuffle=True,
         seed=42,
     )
@@ -233,6 +239,7 @@ def load_datasets(
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
+        class_names=class_names,
         shuffle=False,
     )
 
