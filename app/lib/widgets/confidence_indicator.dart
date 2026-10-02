@@ -52,7 +52,8 @@ class ConfidenceIndicator extends StatelessWidget {
         // rely on color alone).
         Row(
           children: [
-            Icon(level.icon, color: level.color, size: DesignTokens.iconDefault),
+            Icon(level.icon,
+                color: level.color, size: DesignTokens.iconDefault),
             const SizedBox(width: DesignTokens.spacingSmall),
             Flexible(
               child: Text(

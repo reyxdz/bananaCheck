@@ -47,5 +47,7 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Bananalyze needs your camera to take photos of bananas and identify their variety and ripeness.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Bananalyze opens your photos so you can pick a banana picture to check its variety and ripeness.</string>
 </dict>
 </plist>

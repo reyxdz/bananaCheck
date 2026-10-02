@@ -26,8 +26,9 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.22.3
-          channel: stable
+          # Single source of truth: pin to the fvm version in app/.fvmrc so CI
+          # always matches local `fvm flutter` and analyze can't drift.
+          flutter-version-file: app/.fvmrc
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
@@ -48,8 +49,8 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.22.3
-          channel: stable
+          # Single source of truth: pin to the fvm version in app/.fvmrc.
+          flutter-version-file: app/.fvmrc
           cache: true
       - name: Resolve dependencies
         run: flutter pub get
