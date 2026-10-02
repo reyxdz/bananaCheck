@@ -102,4 +102,88 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Get Started'), findsOneWidget);
   });
+
+  testWidgets('Skip is on every page and works from the last one',
+      (tester) async {
+    var finished = 0;
+    await pump(tester, onFinished: () => finished++);
+    for (var i = 0; i < 2; i++) {
+      expect(find.text('Skip'), findsOneWidget);
+      await tapAndSettle(tester, 'Next');
+    }
+    expect(find.text('Skip'), findsOneWidget);
+
+    await tester.tap(find.text('Skip'));
+    expect(finished, 1);
+  });
+
+  testWidgets('swiping right goes back a page', (tester) async {
+    await pump(tester);
+    await tapAndSettle(tester, 'Next');
+    expect(find.text('3 easy steps'), findsOneWidget);
+
+    await tester.drag(find.byType(PageView), const Offset(300, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Know your bananas.'), findsOneWidget);
+  });
+
+  testWidgets('swiping past the last page stays put and does not finish',
+      (tester) async {
+    var finished = 0;
+    await pump(tester, onFinished: () => finished++);
+    await tapAndSettle(tester, 'Next');
+    await tapAndSettle(tester, 'Next');
+
+    await tester.drag(find.byType(PageView), const Offset(-300, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Get Started'), findsOneWidget);
+    expect(finished, 0);
+  });
+
+  testWidgets('dot indicator announces the current page', (tester) async {
+    await pump(tester);
+    expect(find.bySemanticsLabel('Page 1 of 3'), findsOneWidget);
+
+    await tapAndSettle(tester, 'Next');
+    expect(find.bySemanticsLabel('Page 2 of 3'), findsOneWidget);
+
+    await tapAndSettle(tester, 'Next');
+    expect(find.bySemanticsLabel('Page 3 of 3'), findsOneWidget);
+  });
+
+  testWidgets('each page shows its own image asset', (tester) async {
+    bool showsAsset(String name) => find
+        .byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName == 'assets/images/$name',
+        )
+        .evaluate()
+        .isNotEmpty;
+
+    await pump(tester);
+    expect(showsAsset('page1.png'), isTrue);
+
+    await tapAndSettle(tester, 'Next');
+    expect(showsAsset('page2.png'), isTrue);
+
+    await tapAndSettle(tester, 'Next');
+    expect(showsAsset('page3.png'), isTrue);
+  });
+
+  testWidgets('copy stays jargon-free on every page (§7.3)', (tester) async {
+    const banned = ['confidence', 'inference', 'probability', 'classif'];
+    await pump(tester);
+    for (var page = 0; page < 3; page++) {
+      for (final text in tester.widgetList<Text>(find.byType(Text))) {
+        final value = (text.data ?? '').toLowerCase();
+        for (final word in banned) {
+          expect(value.contains(word), isFalse, reason: '"$value" has $word');
+        }
+      }
+      if (page < 2) await tapAndSettle(tester, 'Next');
+    }
+  });
 }
