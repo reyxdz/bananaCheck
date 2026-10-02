@@ -583,5 +583,94 @@ void main() {
         isTrue,
       );
     });
+
+    // ── A34: extra upload coverage ──
+
+    testWidgets('accepts .jpeg photos', (tester) async {
+      final photo = tempImage('banana.jpeg');
+      final scanned = await pumpScreen(tester, picker: () async => photo);
+
+      await tapUpload(tester);
+
+      expect(scanned, [photo]);
+    });
+
+    testWidgets('after a rejected photo the user can pick another one',
+        (tester) async {
+      final picks = [tempImage('banana.gif'), tempImage('banana.jpg')];
+      var next = 0;
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => picks[next++],
+      );
+
+      await tapUpload(tester);
+      expect(scanned, isEmpty);
+      expect(find.textContaining('JPG or PNG'), findsOneWidget);
+
+      // The message sits over the upload button, so wait for it to clear.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+
+      await tapUpload(tester);
+      expect(scanned, [picks[1]]);
+    });
+
+    testWidgets('picker errors never leak technical details (§7.3)',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        picker: () async => throw PlatformException(
+          code: 'photo_access_denied',
+          message: '/data/user/0/app/cache/image.jpg',
+        ),
+      );
+
+      await tapUpload(tester);
+
+      expect(find.textContaining('Could not open that photo'), findsOneWidget);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining('photo_access_denied'), findsNothing);
+      expect(find.textContaining('/data/'), findsNothing);
+    });
+  });
+
+  // ── A34: default gallery picker (image_picker platform channel) ──
+
+  group('pickImageFromGallery', () {
+    const channel = MethodChannel('plugins.flutter.io/image_picker');
+    late List<MethodCall> calls;
+
+    void stubPicker(String? path) {
+      calls = [];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return path;
+      });
+    }
+
+    tearDown(() => _clearChannelStub('plugins.flutter.io/image_picker'));
+
+    test('opens the gallery with a downscale limit and returns the file',
+        () async {
+      stubPicker('/photos/banana.jpg');
+
+      final file = await pickImageFromGallery();
+
+      expect(file?.path, '/photos/banana.jpg');
+      expect(calls.single.method, 'pickImage');
+      final args = calls.single.arguments as Map;
+      expect(args['source'], 1); // ImageSource.gallery
+      expect(args['maxWidth'], 2048);
+      expect(args['maxHeight'], 2048);
+      expect(args['imageQuality'], 90);
+    });
+
+    test('returns null when the user backs out', () async {
+      stubPicker(null);
+      expect(await pickImageFromGallery(), isNull);
+    });
   });
 }

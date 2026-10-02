@@ -31,9 +31,15 @@ Future<InferenceService> buildInferenceService({
     return await loadReal();
   } catch (error) {
     debugPrint(
-      'Real TFLite model unavailable ($error); '
-      'falling back to MockInferenceService.',
+      '⚠️  DEMO MODE — real TFLite model unavailable ($error).\n'
+      '⚠️  Falling back to MockInferenceService: every scan returns the same '
+      'fake result. Add assets/model/banana_classifier.tflite to fix.',
     );
     return loadMock();
   }
 }
+
+/// Whether [service] is the fake fallback rather than the real model, so the
+/// app can flag "demo mode" instead of silently showing fake results.
+bool isDemoInference(InferenceService service) =>
+    service is MockInferenceService;

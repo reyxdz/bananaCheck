@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:banana_classifier/main.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
@@ -355,5 +357,75 @@ void main() {
     // Onboarding was replaced, not pushed under the camera screen.
     final navigator = tester.state<NavigatorState>(find.byType(Navigator));
     expect(navigator.canPop(), isFalse);
+  });
+
+  // ── A34: upload runs the same pipeline as a capture (§7.8) ──
+
+  testWidgets('uploaded photo goes through Analyzing to Results and back',
+      (tester) async {
+    final dir = Directory.systemTemp.createTempSync('upload_e2e');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final photo = File('${dir.path}/banana.jpg')..writeAsBytesSync([0, 0]);
+
+    // The real default picker, backed by a stubbed image_picker channel.
+    const pickerChannel = MethodChannel('plugins.flutter.io/image_picker');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pickerChannel, (_) async => photo.path);
+    addTearDown(() => _clearChannelStub('plugins.flutter.io/image_picker'));
+
+    stubPermissionHandler(cameraStatus: 0);
+    final storage = FakeStorageService();
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: storage,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Upload a Photo'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Saba — Ripe'), findsOneWidget);
+    final records = await storage.getRecords();
+    expect(records.single.imagePath, photo.path);
+
+    await tester.tap(find.text('Scan Again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Upload a Photo'), findsOneWidget);
+  });
+
+  // ── A21: demo-mode banner when the real model is missing ──
+
+  testWidgets('demo mode shows a DEMO ribbon on the camera screen',
+      (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        demoMode: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final banner = tester.widget<Banner>(find.byType(Banner));
+    expect(banner.message, 'DEMO');
+    // The app itself still works underneath.
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+  });
+
+  testWidgets('no ribbon when the real model is in use', (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Banner), findsNothing);
   });
 }

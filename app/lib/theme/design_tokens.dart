@@ -103,6 +103,9 @@ abstract final class DesignTokens {
   static const double onboardingButtonHeight = 56;
   static const double onboardingMinImageHeight = 160;
 
+  // Debug-only "DEMO" ribbon shown when the real model isn't loaded.
+  static const Color demoBanner = Color(0xFFD84315);
+
   // Semantic Colors
   static const Color errorBackground = Color(0xFFFDECEC);
 
