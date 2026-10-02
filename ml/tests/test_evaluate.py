@@ -310,6 +310,9 @@ class TestLoadTestDataset:
         test_ds, class_names = load_test_dataset(config)
 
         assert len(class_names) == NUM_CLASSES
+        # The class → index mapping must be pinned to ALL_CLASSES so metrics
+        # and labels.txt line up with the model's trained output indices.
+        assert class_names == [cls.folder_name for cls in ALL_CLASSES]
         for images, _labels in test_ds.take(1):
             assert images.shape[1:] == (_TEST_IMG_SIZE, _TEST_IMG_SIZE, 3)
             # Rescaled to [0, 1]
