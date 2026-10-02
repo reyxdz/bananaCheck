@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import BackendConfig, get_config
-from .routers import health, models, retraining
+from .routers import classify, health, models, retraining
 
 
 def create_app(config: BackendConfig | None = None) -> FastAPI:
@@ -21,6 +21,7 @@ def create_app(config: BackendConfig | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(health.router)
+    app.include_router(classify.router)
     app.include_router(models.router, prefix="/api")
     app.include_router(retraining.router, prefix="/api")
     return app
