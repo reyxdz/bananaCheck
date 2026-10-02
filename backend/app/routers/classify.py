@@ -23,7 +23,7 @@ from fastapi import (
     status,
 )
 
-from ..config import BackendConfig, get_config
+from ..config import BackendConfig
 from ..models.schemas import ClassificationResponse
 from ..services.inference import (
     InferenceService,
@@ -61,16 +61,23 @@ def build_inference_service(config: BackendConfig) -> InferenceService:
     )
 
 
-@lru_cache(maxsize=1)
-def _cached_inference_service() -> InferenceService:
-    """Load the model once per process."""
-    return build_inference_service(get_config())
+@lru_cache(maxsize=2)
+def _cached_inference_service(config: BackendConfig) -> InferenceService:
+    """Load the model once per distinct config.
+
+    Keyed on the whole (frozen, hashable) config so an app built with a custom
+    ``model_path`` loads *that* model instead of silently reusing the default —
+    while repeated requests against the same config still load the model once.
+    """
+    return build_inference_service(config)
 
 
-def get_inference_service() -> InferenceService:
+def get_inference_service(
+    config: BackendConfig = Depends(get_backend_config),
+) -> InferenceService:
     """FastAPI dependency; override in tests to inject a stub service."""
     try:
-        return _cached_inference_service()
+        return _cached_inference_service(config)
     except ModelUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
