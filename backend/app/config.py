@@ -28,8 +28,12 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 _BACKEND_ROOT = Path(__file__).resolve().parent
-_DEFAULT_MODEL_PATH = _BACKEND_ROOT / "models" / "banana_classifier.tflite"
-_DEFAULT_LABELS_PATH = _BACKEND_ROOT / "models" / "labels.txt"
+# Default to the *same* artefacts the Flutter app bundles, so the dev backend
+# tests exactly what ships on-device (PROJECT_PLAN §10).
+_REPO_ROOT = _BACKEND_ROOT.parent.parent
+_APP_MODEL_DIR = _REPO_ROOT / "app" / "assets" / "model"
+_DEFAULT_MODEL_PATH = _APP_MODEL_DIR / "banana_classifier.tflite"
+_DEFAULT_LABELS_PATH = _APP_MODEL_DIR / "labels.txt"
 _DEFAULT_CONFIDENCE_THRESHOLD = 0.5
 _DEFAULT_CORS_ORIGINS: tuple[str, ...] = (
     "http://localhost",
