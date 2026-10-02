@@ -41,6 +41,7 @@ abstract final class DesignTokens {
   static const double borderWidth = 2;
   static const double minimumTouchTarget = 48;
   static const double primaryActionSize = 64;
+  static const double secondaryActionSize = 56;
 
   // Icon & Image Sizes
   static const double logoSmall = 36;
@@ -74,6 +75,37 @@ abstract final class DesignTokens {
   // Camera Reticle Dimensions
   static const double reticleWidth = 250;
   static const double reticleHeight = 330;
+
+  // Live camera overlay — brackets, dimmed surround, hint pill
+  static const Color cameraDim = Color(0x8C000000);
+  static const Color cameraPill = Color(0xB3000000);
+  static const Color onCamera = Colors.white;
+  // Bright tones so they read on a live video feed: blue = banana detected.
+  static const Color scanDetected = Color(0xFF42A5F5);
+  static const Color scanWarning = Color(0xFFFFB300);
+  static const double bracketArm = 32;
+  static const double bracketStroke = 4;
+  static const double hintGap = 12;
+  static const double shutterDimmedOpacity = 0.45;
+  static const double highlightBorderWidth = 3;
+
+  // Onboarding (§7.7) — natural green, warm cream, muted yellow
+  static const Color onboardingBackground = Color(0xFFF7F5EF);
+  static const Color onboardingAccentText = Color(0xFF5E8F55);
+  static const Color onboardingHighlight = Color(0xFFE9D48A);
+  static const Color onboardingPanel = Color(0xFFE6ECDD);
+  static const Color onboardingScrim = Color(0xFF16301A);
+  static const Color onboardingOnDark = Colors.white;
+  static const Color onboardingOnDarkMuted = Color(0xB3FFFFFF);
+  static const double onboardingHeadlineSize = 32;
+  static const double onboardingDotSize = 8;
+  static const double onboardingActiveDotWidth = 24;
+  static const double onboardingStepBadgeSize = 36;
+  static const double onboardingButtonHeight = 56;
+  static const double onboardingMinImageHeight = 160;
+
+  // Debug-only "DEMO" ribbon shown when the real model isn't loaded.
+  static const Color demoBanner = Color(0xFFD84315);
 
   // Semantic Colors
   static const Color errorBackground = Color(0xFFFDECEC);

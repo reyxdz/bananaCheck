@@ -1,25 +1,36 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/analyzing_screen.dart';
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/results_screen.dart';
 import 'services/inference_service.dart';
-import 'services/mock_inference_service.dart';
+import 'services/inference_service_factory.dart';
+import 'services/preferences_service.dart';
 import 'services/sqflite_storage_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
+import 'theme/design_tokens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final storageService = await SqfliteStorageService.instance();
+  final preferencesService = await PreferencesService.instance();
+  // A21 integration: use the real on-device TFLite model, falling back to the
+  // mock until the validated .tflite is bundled in assets/model/.
+  final inferenceService = await createInferenceService();
 
   runApp(
     BananaClassifierApp(
-      inferenceService: MockInferenceService(),
+      inferenceService: inferenceService,
       storageService: storageService,
+      preferencesService: preferencesService,
+      // Debug builds only: make a missing model impossible to miss.
+      demoMode: kDebugMode && isDemoInference(inferenceService),
     ),
   );
 }
@@ -28,22 +39,55 @@ class BananaClassifierApp extends StatelessWidget {
   const BananaClassifierApp({
     required this.inferenceService,
     required this.storageService,
+    this.preferencesService,
+    this.demoMode = false,
     super.key,
   });
 
   final InferenceService inferenceService;
   final StorageService storageService;
 
+  /// When null (e.g. in tests), onboarding is skipped entirely.
+  final PreferencesService? preferencesService;
+
+  /// Shows a "DEMO" corner ribbon on every screen — set when the real model
+  /// failed to load and results come from [MockInferenceService].
+  final bool demoMode;
+
   @override
   Widget build(BuildContext context) {
+    final home = _HomeScreen(
+      inferenceService: inferenceService,
+      storageService: storageService,
+    );
+    final prefs = preferencesService;
+
     return MaterialApp(
       title: 'Bananalyze',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: _HomeScreen(
-        inferenceService: inferenceService,
-        storageService: storageService,
-      ),
+      builder: demoMode
+          ? (context, child) => Banner(
+                message: 'DEMO',
+                location: BannerLocation.topStart,
+                color: DesignTokens.demoBanner,
+                child: child!,
+              )
+          : null,
+      home: prefs == null || prefs.hasCompletedOnboarding
+          ? home
+          : Builder(
+              builder: (context) => OnboardingScreen(
+                onFinished: () {
+                  prefs.setOnboardingCompleted();
+                  // Replace onboarding so Back can't return to it.
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(builder: (_) => home),
+                    (_) => false,
+                  );
+                },
+              ),
+            ),
     );
   }
 }

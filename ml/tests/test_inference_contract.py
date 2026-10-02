@@ -117,23 +117,23 @@ def test_decode_output_returns_max_probability_as_confidence() -> None:
 
 
 def test_decode_output_picks_correct_variety_and_ripeness() -> None:
-    """Spot-check: the first class (index 0) should be Cavendish Unripe."""
+    """Spot-check: index 0 is Cavendish Overripe (alphabetical class ordering)."""
     probs = [0.0] * NUM_CLASSES
     probs[0] = 0.85
 
     result = decode_output(probs)
     assert result.variety == str(BananaVariety.CAVENDISH)
-    assert result.ripeness == str(RipenessStage.UNRIPE)
+    assert result.ripeness == str(RipenessStage.OVERRIPE)
 
 
 def test_decode_output_picks_last_class_correctly() -> None:
-    """Spot-check: the last class should be Saba Overripe."""
+    """Spot-check: the last class is Senorita Unripe (alphabetical ordering)."""
     probs = [0.0] * NUM_CLASSES
     probs[NUM_CLASSES - 1] = 0.99
 
     result = decode_output(probs)
-    assert result.variety == str(BananaVariety.SABA)
-    assert result.ripeness == str(RipenessStage.OVERRIPE)
+    assert result.variety == str(BananaVariety.SENORITA)
+    assert result.ripeness == str(RipenessStage.UNRIPE)
 
 
 # ---------------------------------------------------------------------------

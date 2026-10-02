@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:banana_classifier/main.dart';
 import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
+import 'package:banana_classifier/services/preferences_service.dart';
 import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 //  In-memory StorageService for tests
@@ -137,8 +141,8 @@ void main() {
 
     expect(find.text('Bananalyze'), findsOneWidget);
     // The capture button shows the "Scan" label below the circular button.
-    expect(find.text('Scan'), findsOneWidget);
-    expect(find.text('History'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+    expect(find.byTooltip('History'), findsOneWidget);
   });
 
   testWidgets('history remains one tap from the scan screen', (tester) async {
@@ -150,7 +154,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('History'));
+    await tester.tap(find.byTooltip('History'));
     await tester.pumpAndSettle();
 
     expect(find.text('Scan History'), findsOneWidget);
@@ -174,7 +178,7 @@ void main() {
     expect(find.text('Camera access needed'), findsOneWidget);
     expect(find.text('Allow Camera'), findsOneWidget);
     // The Scan button should NOT be visible when denied.
-    expect(find.text('Scan'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsNothing);
   });
 
   testWidgets('shows open-settings view when permission is permanently denied',
@@ -192,7 +196,7 @@ void main() {
     expect(find.text('Camera is turned off'), findsOneWidget);
     expect(find.text('Open Settings'), findsOneWidget);
     // The Scan button should NOT be visible.
-    expect(find.text('Scan'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsNothing);
   });
 
   // ── A6-specific: camera error fallback in test environment ──
@@ -215,7 +219,7 @@ void main() {
     expect(find.text('No camera found on this device.'), findsOneWidget);
     expect(find.text('Try Again'), findsOneWidget);
     // Capture button with "Scan" label is still visible (permission granted).
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
   });
 
   // ── A7-specific: capture button tests ──
@@ -235,14 +239,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Capture button is rendered (label visible).
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
 
     // The camera icon is present inside the circular button.
     expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
 
     // Tapping does nothing because the camera isn't ready — no snackbar,
     // no navigation, no crash.
-    await tester.tap(find.text('Scan'));
+    await tester.tap(find.bySemanticsLabel('Scan'));
     await tester.pumpAndSettle();
 
     // Still on the camera screen, no crash or navigation occurred.
@@ -263,7 +267,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Capture button should not appear at all.
-    expect(find.text('Scan'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsNothing);
     expect(find.text('Camera access needed'), findsOneWidget);
   });
 
@@ -284,6 +288,144 @@ void main() {
     // with a short, plain-language label".
     // Both the camera icon and the "Scan" text label must be present.
     expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
-    expect(find.text('Scan'), findsOneWidget);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+  });
+
+  // ── A32: first-launch onboarding ──
+
+  testWidgets('first launch shows onboarding, then camera after Skip',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await PreferencesService.instance();
+
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        preferencesService: prefs,
+      ),
+    );
+    expect(find.text('Know your bananas.'), findsOneWidget);
+
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+    expect(prefs.hasCompletedOnboarding, isTrue);
+  });
+
+  testWidgets('onboarding is not shown once completed', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      PreferencesService.onboardingKey: true,
+    });
+
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        preferencesService: await PreferencesService.instance(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Know your bananas.'), findsNothing);
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+  });
+
+  testWidgets('Get Started finishes onboarding and Back cannot return to it',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await PreferencesService.instance();
+
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        preferencesService: prefs,
+      ),
+    );
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+    expect(prefs.hasCompletedOnboarding, isTrue);
+
+    // Onboarding was replaced, not pushed under the camera screen.
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    expect(navigator.canPop(), isFalse);
+  });
+
+  // ── A34: upload runs the same pipeline as a capture (§7.8) ──
+
+  testWidgets('uploaded photo goes through Analyzing to Results and back',
+      (tester) async {
+    final dir = Directory.systemTemp.createTempSync('upload_e2e');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final photo = File('${dir.path}/banana.jpg')..writeAsBytesSync([0, 0]);
+
+    // The real default picker, backed by a stubbed image_picker channel.
+    const pickerChannel = MethodChannel('plugins.flutter.io/image_picker');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pickerChannel, (_) async => photo.path);
+    addTearDown(() => _clearChannelStub('plugins.flutter.io/image_picker'));
+
+    stubPermissionHandler(cameraStatus: 0);
+    final storage = FakeStorageService();
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: storage,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Upload a Photo'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Saba — Ripe'), findsOneWidget);
+    final records = await storage.getRecords();
+    expect(records.single.imagePath, photo.path);
+
+    await tester.tap(find.text('Scan Again'));
+    await tester.pumpAndSettle();
+    expect(find.text('Upload a Photo'), findsOneWidget);
+  });
+
+  // ── A21: demo-mode banner when the real model is missing ──
+
+  testWidgets('demo mode shows a DEMO ribbon on the camera screen',
+      (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+        demoMode: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final banner = tester.widget<Banner>(find.byType(Banner));
+    expect(banner.message, 'DEMO');
+    // The app itself still works underneath.
+    expect(find.bySemanticsLabel('Scan'), findsOneWidget);
+  });
+
+  testWidgets('no ribbon when the real model is in use', (tester) async {
+    await tester.pumpWidget(
+      BananaClassifierApp(
+        inferenceService: MockInferenceService(),
+        storageService: FakeStorageService(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Banner), findsNothing);
   });
 }

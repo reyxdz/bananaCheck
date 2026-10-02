@@ -7,8 +7,12 @@
 /// without a package.
 library;
 
+import 'dart:async';
+import 'dart:io';
+
 import 'package:banana_classifier/main.dart';
 import 'package:banana_classifier/models/scan_record.dart';
+import 'package:banana_classifier/screens/camera_screen.dart';
 import 'package:banana_classifier/services/mock_inference_service.dart';
 import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
@@ -123,13 +127,24 @@ void main() {
       expect(find.text('Bananalyze'), findsOneWidget);
     });
 
-    testWidgets('shows History button with icon + label per §7.2',
+    testWidgets('History is a quiet icon button with an accessible label',
         (tester) async {
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('History'), findsOneWidget);
       expect(find.byIcon(Icons.history_rounded), findsOneWidget);
+      // No visible text label competing with Scan…
+      expect(find.text('History'), findsNothing);
+      // …but screen readers and long-press still get "History".
+      expect(find.byTooltip('History'), findsOneWidget);
+      final size = tester.getSize(
+        find.ancestor(
+          of: find.byIcon(Icons.history_rounded),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(size.width, greaterThanOrEqualTo(48));
+      expect(size.height, greaterThanOrEqualTo(48));
     });
 
     testWidgets('History button navigates to Scan History screen',
@@ -137,7 +152,7 @@ void main() {
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('History'));
+      await tester.tap(find.byTooltip('History'));
       await tester.pumpAndSettle();
 
       expect(find.text('Scan History'), findsOneWidget);
@@ -166,14 +181,14 @@ void main() {
       await tester.pumpWidget(buildApp(cameraStatus: 0));
       await tester.pumpAndSettle();
 
-      expect(find.text('Scan'), findsNothing);
+      expect(find.bySemanticsLabel('Scan'), findsNothing);
     });
 
     testWidgets('hide capture button when permanently denied', (tester) async {
       await tester.pumpWidget(buildApp(cameraStatus: 4));
       await tester.pumpAndSettle();
 
-      expect(find.text('Scan'), findsNothing);
+      expect(find.bySemanticsLabel('Scan'), findsNothing);
     });
 
     testWidgets(
@@ -226,7 +241,7 @@ void main() {
       await tester.pumpWidget(buildApp());
       await tester.pumpAndSettle();
 
-      expect(find.text('Scan'), findsOneWidget);
+      expect(find.bySemanticsLabel('Scan'), findsOneWidget);
     });
 
     testWidgets('Scan button pairs icon with label per §7.2', (tester) async {
@@ -234,7 +249,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
-      expect(find.text('Scan'), findsOneWidget);
+      expect(find.bySemanticsLabel('Scan'), findsOneWidget);
     });
 
     testWidgets('tapping disabled Scan does not navigate away', (tester) async {
@@ -242,7 +257,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Camera not ready → button disabled, tap does nothing.
-      await tester.tap(find.text('Scan'));
+      await tester.tap(find.bySemanticsLabel('Scan'));
       await tester.pumpAndSettle();
 
       // Still on camera screen.
@@ -280,6 +295,382 @@ void main() {
         find.textContaining('Settings'),
         findsWidgets,
       );
+    });
+  });
+
+  // ── A33: upload image from gallery (§7.8) ──
+
+  group('CameraScreen — Upload Photo', () {
+    late Directory tempDir;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync('upload_test');
+    });
+
+    tearDown(() {
+      tempDir.deleteSync(recursive: true);
+    });
+
+    File tempImage(String name, {int bytes = 16}) =>
+        File('${tempDir.path}/$name')..writeAsBytesSync(List.filled(bytes, 0));
+
+    /// Pumps [CameraScreen] on its own with a fake gallery. Defaults to
+    /// camera permission denied, since that is where Upload a Photo lives.
+    Future<List<File>> pumpScreen(
+      WidgetTester tester, {
+      required GalleryPicker picker,
+      int cameraStatus = 0,
+    }) async {
+      stubPermissionHandler(cameraStatus: cameraStatus);
+      final scanned = <File>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CameraScreen(
+            onScan: scanned.add,
+            onHistory: () {},
+            pickFromGallery: picker,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return scanned;
+    }
+
+    /// Taps Upload a Photo and lets the real file-system checks finish.
+    Future<void> tapUpload(WidgetTester tester) async {
+      await tester.tap(find.text('Upload a Photo'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('shows Upload a Photo with icon + label per §7.2',
+        (tester) async {
+      await pumpScreen(tester, picker: () async => null);
+
+      expect(find.text('Upload a Photo'), findsOneWidget);
+      expect(find.byIcon(Icons.photo_library_outlined), findsOneWidget);
+      expect(
+        tester
+            .getSize(
+              find.ancestor(
+                of: find.text('Upload a Photo'),
+                matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+              ),
+            )
+            .height,
+        greaterThanOrEqualTo(48),
+      );
+    });
+
+    testWidgets('with camera: gallery · shutter · flash control row',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await pumpScreen(tester, picker: () async => null, cameraStatus: 1);
+
+      Rect buttonRect(String tooltip) => tester.getRect(
+            find.ancestor(
+              of: find.byTooltip(tooltip),
+              matching: find.byType(IconButton),
+            ),
+          );
+      final gallery = buttonRect('Upload a Photo');
+      final shutter = tester.getRect(find.bySemanticsLabel('Scan'));
+      final flash = buttonRect('Turn flash on');
+
+      // Left · centre · right, all on one row.
+      expect(gallery.right, lessThan(shutter.left));
+      expect(flash.left, greaterThan(shutter.right));
+      expect(shutter.center.dx, closeTo(180, 1));
+      expect((gallery.center.dy - shutter.center.dy).abs(), lessThan(1));
+      expect((flash.center.dy - shutter.center.dy).abs(), lessThan(1));
+
+      // The shutter is the biggest target; side buttons still meet 48dp.
+      expect(shutter.width, greaterThan(gallery.width));
+      expect(gallery.width, greaterThanOrEqualTo(48));
+      expect(flash.width, greaterThanOrEqualTo(48));
+
+      // No separate text labels any more — tooltips/semantics carry them.
+      expect(find.text('Scan'), findsNothing);
+      expect(find.text('Upload a Photo'), findsNothing);
+    });
+
+    testWidgets('with camera: gallery works even when the camera fails',
+        (tester) async {
+      final photo = tempImage('banana.jpg');
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cameraStatus: 1,
+      );
+      // The test stubs report no camera hardware.
+      expect(find.text('No camera found on this device.'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Upload a Photo'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(scanned, [photo]);
+    });
+
+    testWidgets('with camera: flash and shutter are off until camera is ready',
+        (tester) async {
+      await pumpScreen(tester, picker: () async => null, cameraStatus: 1);
+
+      final flash = tester.widget<IconButton>(
+        find.ancestor(
+          of: find.byIcon(Icons.flash_off_rounded),
+          matching: find.byType(IconButton),
+        ),
+      );
+      expect(flash.onPressed, isNull);
+      expect(
+        tester.getSemantics(find.bySemanticsLabel('Scan')),
+        isNot(matchesSemantics(isEnabled: true)),
+      );
+    });
+
+    /// Finds the button that renders [label], whatever its concrete type.
+    Finder buttonFor(String label) => find.ancestor(
+          of: find.text(label),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        );
+
+    for (final (status, primary) in [
+      (0, 'Allow Camera'),
+      (4, 'Open Settings')
+    ]) {
+      testWidgets(
+          'without camera: filled "$primary" with outlined upload below it, '
+          'both in the thumb zone', (tester) async {
+        await pumpScreen(
+          tester,
+          picker: () async => null,
+          cameraStatus: status,
+        );
+
+        final primaryButton = buttonFor(primary);
+        final uploadButton = buttonFor('Upload a Photo');
+        expect(tester.widget(primaryButton), isA<FilledButton>());
+        expect(tester.widget(uploadButton), isA<OutlinedButton>());
+
+        // Upload sits directly below the primary action…
+        final primaryRect = tester.getRect(primaryButton);
+        final uploadRect = tester.getRect(uploadButton);
+        expect(uploadRect.top, greaterThan(primaryRect.bottom));
+        expect(uploadRect.top - primaryRect.bottom, lessThanOrEqualTo(16));
+
+        // …and both are in the lower third of the screen, easy to reach
+        // with a thumb.
+        final screenHeight =
+            tester.view.physicalSize.height / tester.view.devicePixelRatio;
+        expect(primaryRect.top, greaterThan(screenHeight * 2 / 3));
+        expect(uploadRect.bottom, lessThanOrEqualTo(screenHeight));
+        expect(uploadRect.height, greaterThanOrEqualTo(48));
+      });
+    }
+
+    testWidgets('upload works when the camera is turned off in Settings',
+        (tester) async {
+      final photo = tempImage('banana.jpg');
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cameraStatus: 4,
+      );
+
+      await tapUpload(tester);
+
+      expect(scanned, [photo]);
+    });
+
+    testWidgets('picked JPG goes to the same onScan callback as capture',
+        (tester) async {
+      final photo = tempImage('banana.jpg');
+      final scanned = await pumpScreen(tester, picker: () async => photo);
+
+      await tapUpload(tester);
+
+      expect(scanned, [photo]);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('accepts PNG regardless of extension case', (tester) async {
+      final photo = tempImage('banana.PNG');
+      final scanned = await pumpScreen(tester, picker: () async => photo);
+
+      await tapUpload(tester);
+
+      expect(scanned, [photo]);
+    });
+
+    testWidgets('cancelling the picker does nothing', (tester) async {
+      final scanned = await pumpScreen(tester, picker: () async => null);
+
+      await tapUpload(tester);
+
+      expect(scanned, isEmpty);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.text('Upload a Photo'), findsOneWidget);
+    });
+
+    testWidgets('unsupported file shows a plain-language error',
+        (tester) async {
+      final gif = tempImage('banana.gif');
+      final scanned = await pumpScreen(tester, picker: () async => gif);
+
+      await tapUpload(tester);
+
+      expect(scanned, isEmpty);
+      expect(find.textContaining('JPG or PNG'), findsOneWidget);
+    });
+
+    testWidgets('picker failure shows a plain-language error', (tester) async {
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => throw Exception('picker crashed'),
+      );
+
+      await tapUpload(tester);
+
+      expect(scanned, isEmpty);
+      expect(find.textContaining('Could not open that photo'), findsOneWidget);
+    });
+
+    testWidgets('files over 20 MB show a plain-language error', (tester) async {
+      final huge = tempImage('huge.jpg', bytes: 20 * 1024 * 1024 + 1);
+      final scanned = await pumpScreen(tester, picker: () async => huge);
+
+      await tapUpload(tester);
+
+      expect(scanned, isEmpty);
+      expect(find.textContaining('JPG or PNG'), findsOneWidget);
+    });
+
+    testWidgets('is disabled while the picker is open (no double-open)',
+        (tester) async {
+      var opened = 0;
+      final pending = Completer<File?>();
+      await pumpScreen(
+        tester,
+        picker: () {
+          opened++;
+          return pending.future;
+        },
+      );
+
+      await tester.tap(find.text('Upload a Photo'));
+      await tester.pump();
+      expect(
+        tester.widget<ButtonStyleButton>(buttonFor('Upload a Photo')).enabled,
+        isFalse,
+      );
+
+      await tester.tap(find.text('Upload a Photo'), warnIfMissed: false);
+      await tester.pump();
+      expect(opened, 1);
+
+      // User backs out — the button comes back.
+      pending.complete(null);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<ButtonStyleButton>(buttonFor('Upload a Photo')).enabled,
+        isTrue,
+      );
+    });
+
+    // ── A34: extra upload coverage ──
+
+    testWidgets('accepts .jpeg photos', (tester) async {
+      final photo = tempImage('banana.jpeg');
+      final scanned = await pumpScreen(tester, picker: () async => photo);
+
+      await tapUpload(tester);
+
+      expect(scanned, [photo]);
+    });
+
+    testWidgets('after a rejected photo the user can pick another one',
+        (tester) async {
+      final picks = [tempImage('banana.gif'), tempImage('banana.jpg')];
+      var next = 0;
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => picks[next++],
+      );
+
+      await tapUpload(tester);
+      expect(scanned, isEmpty);
+      expect(find.textContaining('JPG or PNG'), findsOneWidget);
+
+      // The message sits over the upload button, so wait for it to clear.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+
+      await tapUpload(tester);
+      expect(scanned, [picks[1]]);
+    });
+
+    testWidgets('picker errors never leak technical details (§7.3)',
+        (tester) async {
+      await pumpScreen(
+        tester,
+        picker: () async => throw PlatformException(
+          code: 'photo_access_denied',
+          message: '/data/user/0/app/cache/image.jpg',
+        ),
+      );
+
+      await tapUpload(tester);
+
+      expect(find.textContaining('Could not open that photo'), findsOneWidget);
+      expect(find.textContaining('Exception'), findsNothing);
+      expect(find.textContaining('photo_access_denied'), findsNothing);
+      expect(find.textContaining('/data/'), findsNothing);
+    });
+  });
+
+  // ── A34: default gallery picker (image_picker platform channel) ──
+
+  group('pickImageFromGallery', () {
+    const channel = MethodChannel('plugins.flutter.io/image_picker');
+    late List<MethodCall> calls;
+
+    void stubPicker(String? path) {
+      calls = [];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return path;
+      });
+    }
+
+    tearDown(() => _clearChannelStub('plugins.flutter.io/image_picker'));
+
+    test('opens the gallery with a downscale limit and returns the file',
+        () async {
+      stubPicker('/photos/banana.jpg');
+
+      final file = await pickImageFromGallery();
+
+      expect(file?.path, '/photos/banana.jpg');
+      expect(calls.single.method, 'pickImage');
+      final args = calls.single.arguments as Map;
+      expect(args['source'], 1); // ImageSource.gallery
+      expect(args['maxWidth'], 2048);
+      expect(args['maxHeight'], 2048);
+      expect(args['imageQuality'], 90);
+    });
+
+    test('returns null when the user backs out', () async {
+      stubPicker(null);
+      expect(await pickImageFromGallery(), isNull);
     });
   });
 }
