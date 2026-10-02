@@ -41,6 +41,7 @@ abstract final class DesignTokens {
   static const double borderWidth = 2;
   static const double minimumTouchTarget = 48;
   static const double primaryActionSize = 64;
+  static const double secondaryActionSize = 56;
 
   // Icon & Image Sizes
   static const double logoSmall = 36;
@@ -74,6 +75,18 @@ abstract final class DesignTokens {
   // Camera Reticle Dimensions
   static const double reticleWidth = 250;
   static const double reticleHeight = 330;
+
+  // Live camera overlay — brackets, dimmed surround, hint pill
+  static const Color cameraDim = Color(0x8C000000);
+  static const Color cameraPill = Color(0xB3000000);
+  static const Color onCamera = Colors.white;
+  // Brighter than primary/amber tokens so they read on a live video feed.
+  static const Color scanReady = Color(0xFF66BB6A);
+  static const Color scanWarning = Color(0xFFFFB300);
+  static const double bracketArm = 32;
+  static const double bracketStroke = 4;
+  static const double hintGap = 12;
+  static const double shutterDimmedOpacity = 0.45;
 
   // Onboarding (§7.7) — natural green, warm cream, muted yellow
   static const Color onboardingBackground = Color(0xFFF7F5EF);
