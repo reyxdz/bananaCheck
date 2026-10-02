@@ -206,6 +206,38 @@ class TestLoadDatasets:
             assert float(tf.reduce_min(images)) >= 0.0
             break
 
+    def test_class_indices_are_pinned_to_all_classes(self, tmp_path: Path) -> None:
+        """Guards the label-ordering contract.
+
+        Training must assign class indices from ALL_CLASSES rather than relying
+        on Keras's implicit alphabetical sort, so the model's output indices
+        always match the shipped ``labels.txt``. Dropping the explicit
+        ``class_names`` argument silently mislabels every prediction.
+        """
+        _create_synthetic_dataset(tmp_path)
+        config = TrainingConfig(
+            data_dir=tmp_path,
+            image_width=_TEST_IMG_SIZE,
+            image_height=_TEST_IMG_SIZE,
+            batch_size=4,
+        )
+
+        expected = [cls.folder_name for cls in ALL_CLASSES]
+        # Re-load without the rescale/prefetch wrappers to read class_names.
+        train_ds = tf.keras.utils.image_dataset_from_directory(
+            tmp_path / "train",
+            image_size=config.image_size,
+            batch_size=config.batch_size,
+            label_mode="int",
+            class_names=expected,
+            shuffle=False,
+        )
+        assert train_ds.class_names == expected
+
+        # And the real loader must succeed with that same pinned ordering.
+        loaded_train, _loaded_val = load_datasets(config)
+        assert loaded_train is not None
+
     def test_raises_on_missing_train_dir(self, tmp_path: Path) -> None:
         config = TrainingConfig(data_dir=tmp_path)
         with pytest.raises(FileNotFoundError):

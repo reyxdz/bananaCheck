@@ -64,21 +64,22 @@ def test_all_classes_covers_every_variety_ripeness_combination() -> None:
     assert set(ALL_CLASSES) == expected
 
 
-def test_all_classes_is_ordered_alphabetically_by_folder_name() -> None:
-    """Validate the canonical order: the model's output index order.
+def test_all_classes_is_alphabetical_by_folder_name() -> None:
+    """ALL_CLASSES must stay sorted by ``folder_name``.
 
-    The shipped model was trained with Keras' ``image_dataset_from_directory``,
-    which numbers classes by sorted folder name.
+    This ordering defines the model's output indices: Keras assigns class
+    indices by sorting the dataset's class folder names, and
+    ``app/assets/model/labels.txt`` is generated from this list. Reordering it
+    without retraining silently mislabels every on-device prediction.
     """
-    expected_order = sorted(
-        (
-            BananaClass(variety, ripeness)
-            for variety in BananaVariety
-            for ripeness in RipenessStage
-        ),
-        key=lambda cls: cls.folder_name,
-    )
-    assert expected_order == ALL_CLASSES
+    folder_names = [cls.folder_name for cls in ALL_CLASSES]
+    assert folder_names == sorted(folder_names)
+
+
+def test_all_classes_first_and_last_are_the_expected_slugs() -> None:
+    """Lock the exact boundaries of the index mapping."""
+    assert ALL_CLASSES[0].folder_name == "Cavendish_Overripe"
+    assert ALL_CLASSES[-1].folder_name == "Senorita_Unripe"
 
 
 # ---------------------------------------------------------------------------
@@ -127,8 +128,11 @@ def test_index_to_class_then_class_to_index_is_identity() -> None:
 
 
 def test_class_to_index_returns_correct_index_for_first_and_last_class() -> None:
-    """Spot-check that the boundary entries resolve to the expected indices."""
-    # Alphabetical by folder name — the order the shipped model was trained in.
+    """Spot-check that the boundary entries resolve to the expected indices.
+
+    Boundaries follow the alphabetical ``folder_name`` ordering that defines the
+    model's output indices.
+    """
     first = BananaClass(BananaVariety.CAVENDISH, RipenessStage.OVERRIPE)
     last = BananaClass(BananaVariety.SENORITA, RipenessStage.UNRIPE)
     assert class_to_index(first) == 0

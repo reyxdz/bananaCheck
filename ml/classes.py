@@ -61,13 +61,18 @@ class BananaClass(NamedTuple):
 # Ordered class list  (defines model output index ordering)
 # ---------------------------------------------------------------------------
 #
-# Order: alphabetical by folder name ("Cavendish_Overripe", "Cavendish_Ripe",
-# …, "Senorita_Unripe"). This is the order Keras'
-# ``image_dataset_from_directory`` assigns to class folders, which is how the
-# shipped model was trained — so model output index ``i`` is ``ALL_CLASSES[i]``.
-# Training/evaluation also pass this list explicitly as ``class_names`` so
-# the two can never drift. It is written verbatim to
-# ``app/assets/model/labels.txt``; changing it requires retraining the model.
+# Order: **alphabetical by folder_name** — e.g. ``Cavendish_Overripe``,
+# ``Cavendish_Ripe``, ``Cavendish_Unripe``, ``Cordova_Overripe``, …
+#
+# This order defines the model's output indices and MUST stay alphabetical,
+# because ``tf.keras.utils.image_dataset_from_directory`` derives class indices
+# by sorting the class folder names.  ``ml.train`` and ``ml.evaluate`` pass this
+# list explicitly as ``class_names`` to pin the mapping rather than relying on
+# that implicit sort, and ``app/assets/model/labels.txt`` is generated from it
+# verbatim so on-device decoding matches the trained indices.
+#
+# Do NOT reorder (e.g. to a semantic Unripe → Ripe → Overripe sequence) without
+# retraining the model — doing so silently mislabels every prediction.
 
 ALL_CLASSES: list[BananaClass] = sorted(
     (
@@ -75,7 +80,7 @@ ALL_CLASSES: list[BananaClass] = sorted(
         for variety in BananaVariety
         for ripeness in RipenessStage
     ),
-    key=lambda cls: cls.folder_name,
+    key=lambda banana_class: banana_class.folder_name,
 )
 
 NUM_CLASSES: int = len(ALL_CLASSES)  # 18

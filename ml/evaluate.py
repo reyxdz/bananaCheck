@@ -149,8 +149,9 @@ def load_test_dataset(
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
-        # Pin index order to ALL_CLASSES (== labels.txt), never folder luck.
-        class_names=[cls.folder_name for cls in ALL_CLASSES],
+        # Pin the class → index mapping to ALL_CLASSES so the reported metrics
+        # line up with the model's trained output indices and labels.txt.
+        class_names=[banana_class.folder_name for banana_class in ALL_CLASSES],
         shuffle=False,
     )
 

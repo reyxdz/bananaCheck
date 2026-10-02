@@ -220,13 +220,17 @@ def load_datasets(
     require_directory(train_dir)
     require_directory(val_dir)
 
+    # Pin the class → index mapping to ALL_CLASSES instead of relying on the
+    # implicit alphabetical sort, so the model's output indices always match
+    # the shipped labels.txt.
+    class_names = [banana_class.folder_name for banana_class in ALL_CLASSES]
+
     train_ds = tf.keras.utils.image_dataset_from_directory(
         train_dir,
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
-        # Pin index order to ALL_CLASSES (== labels.txt), never folder luck.
-        class_names=[cls.folder_name for cls in ALL_CLASSES],
+        class_names=class_names,
         shuffle=True,
         seed=42,
     )
@@ -235,8 +239,7 @@ def load_datasets(
         image_size=config.image_size,
         batch_size=config.batch_size,
         label_mode="int",
-        # Pin index order to ALL_CLASSES (== labels.txt), never folder luck.
-        class_names=[cls.folder_name for cls in ALL_CLASSES],
+        class_names=class_names,
         shuffle=False,
     )
 
