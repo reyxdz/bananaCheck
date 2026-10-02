@@ -23,6 +23,7 @@ ml/data_split/
 *.h5
 *.keras
 *.tflite
+!app/assets/model/banana_classifier.tflite
 !app/assets/model/labels.example.txt
 !app/assets/model/README.md
 
