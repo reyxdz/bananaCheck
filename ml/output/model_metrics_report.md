@@ -6,36 +6,36 @@ _Generated for the project paper (B17) from the evaluation (B9) and tuning (B10)
 
 | Metric | Value |
 |---|---|
-| Overall accuracy | 0.9500 |
+| Overall accuracy | 0.9704 |
 | Test samples | 540 |
 | Classes | 18 |
-| Macro avg F1 | 0.9495 |
-| Weighted avg F1 | 0.9495 |
+| Macro avg F1 | 0.9701 |
+| Weighted avg F1 | 0.9701 |
 
 ## Per-class metrics
 
 | Class | Precision | Recall | F1-score | Support |
 |---|---|---|---|---|
-| Cavendish_Overripe | 1.0000 | 0.8667 | 0.9286 | 30 |
-| Cavendish_Ripe | 0.8333 | 1.0000 | 0.9091 | 30 |
-| Cavendish_Unripe | 0.9600 | 0.8000 | 0.8727 | 30 |
+| Cavendish_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
+| Cavendish_Ripe | 0.9677 | 1.0000 | 0.9836 | 30 |
+| Cavendish_Unripe | 0.8929 | 0.8333 | 0.8621 | 30 |
 | Cordova_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Cordova_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Cordova_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Lakatan_Overripe | 0.9677 | 1.0000 | 0.9836 | 30 |
+| Cordova_Unripe | 0.9677 | 1.0000 | 0.9836 | 30 |
+| Lakatan_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Lakatan_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Lakatan_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Latundan_Overripe | 1.0000 | 0.9667 | 0.9831 | 30 |
+| Latundan_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Latundan_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Latundan_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Saba_Overripe | 0.7105 | 0.9000 | 0.7941 | 30 |
-| Saba_Ripe | 0.8261 | 0.6333 | 0.7170 | 30 |
-| Saba_Unripe | 0.8750 | 0.9333 | 0.9032 | 30 |
-| Senorita_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
+| Saba_Overripe | 0.8529 | 0.9667 | 0.9062 | 30 |
+| Saba_Ripe | 0.9259 | 0.8333 | 0.8772 | 30 |
+| Saba_Unripe | 0.8667 | 0.8667 | 0.8667 | 30 |
+| Senorita_Overripe | 1.0000 | 0.9667 | 0.9831 | 30 |
 | Senorita_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Senorita_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| **Macro average** | 0.9540 | 0.9500 | 0.9495 | 540 |
-| **Weighted average** | 0.9540 | 0.9500 | 0.9495 | 540 |
+| **Macro average** | 0.9708 | 0.9704 | 0.9701 | 540 |
+| **Weighted average** | 0.9708 | 0.9704 | 0.9701 | 540 |
 
 ## Confusion matrix
 

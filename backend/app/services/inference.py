@@ -19,29 +19,25 @@ Design notes
 
 from __future__ import annotations
 
-import io
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, UnidentifiedImageError
 
 from ..models.schemas import ClassificationResponse
+from .preprocessing import (
+    DEFAULT_INPUT_SIZE,
+    InvalidImageError,
+    preprocess_bytes,
+)
 
 #: A predictor maps a ``(1, size, size, 3)`` float32 batch to class probabilities.
 Predictor = Callable[[np.ndarray], Sequence[float]]
 
-#: Square input dimension expected by the MobileNetV2-based model.
-DEFAULT_INPUT_SIZE = 224
-
 
 class ModelUnavailableError(RuntimeError):
     """Raised when the model or labels file cannot be loaded."""
-
-
-class InvalidImageError(ValueError):
-    """Raised when the uploaded bytes cannot be decoded as an image."""
 
 
 # ---------------------------------------------------------------------------
@@ -52,19 +48,16 @@ class InvalidImageError(ValueError):
 def preprocess_image(image_bytes: bytes, size: int = DEFAULT_INPUT_SIZE) -> np.ndarray:
     """Decode *image_bytes* into a normalised ``(1, size, size, 3)`` float32 batch.
 
+    Thin wrapper over :func:`.preprocessing.preprocess_bytes` — the shared
+    preprocessing lives there so the backend, ``ml/preprocess.py`` and the Dart
+    app stay in sync (B20).
+
     Raises
     ------
     InvalidImageError
         If the bytes are not a decodable image.
     """
-    try:
-        with Image.open(io.BytesIO(image_bytes)) as img:
-            rgb = img.convert("RGB").resize((size, size), Image.BILINEAR)
-            array = np.asarray(rgb, dtype=np.float32) / 255.0
-    except (UnidentifiedImageError, OSError, ValueError) as exc:
-        raise InvalidImageError(f"Could not decode image: {exc}") from exc
-
-    return array[np.newaxis, ...]
+    return preprocess_bytes(image_bytes, size=size)
 
 
 # ---------------------------------------------------------------------------
