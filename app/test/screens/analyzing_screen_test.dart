@@ -259,5 +259,101 @@ void main() {
       // Storage should NOT have been called.
       expect(storageService.saveCallCount, 0);
     });
+
+    testWidgets('shows the same error when the photo is not a banana',
+        (tester) async {
+      // The rejection class can win with high confidence — the model is sure
+      // it is looking at something that is not a banana. Confidence alone
+      // would wave it through.
+      final notBanana = ClassificationResult(
+        variety: ClassificationResult.notBananaVariety,
+        ripeness: '',
+        confidence: 0.97,
+      );
+      final storageService = _FakeStorageService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: _InstantInferenceService(result: notBanana),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text(const LowConfidenceException().userMessage),
+        findsOneWidget,
+      );
+      expect(find.text('Try Again'), findsOneWidget);
+      // A non-banana must never reach History.
+      expect(storageService.saveCallCount, 0);
+    });
+
+    testWidgets('shows low-confidence error when the top two classes are close',
+        (tester) async {
+      final torn = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.55,
+        margin: 0.04, // runner-up at 0.51 — effectively a coin toss
+      );
+      final storageService = _FakeStorageService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: _InstantInferenceService(result: torn),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text(const LowConfidenceException().userMessage),
+        findsOneWidget,
+      );
+      expect(storageService.saveCallCount, 0);
+    });
+
+    testWidgets('a confident banana with a clear margin still shows results',
+        (tester) async {
+      final good = ClassificationResult(
+        variety: 'Lakatan',
+        ripeness: 'Ripe',
+        confidence: 0.91,
+        margin: 0.80,
+      );
+      final storageService = _FakeStorageService();
+      ClassificationResult? delivered;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: _InstantInferenceService(result: good),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (result, __) => delivered = result,
+          ),
+        ),
+      );
+
+      // One pump lets the classify + save microtasks complete; the screen's
+      // spinner animates forever, so pumpAndSettle would never return.
+      await tester.pump();
+
+      expect(
+          find.text(const LowConfidenceException().userMessage), findsNothing);
+      expect(delivered?.variety, 'Lakatan');
+      expect(storageService.saveCallCount, 1);
+    });
   });
 }

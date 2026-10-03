@@ -444,7 +444,11 @@ class TestRealModelIntegration:
             body = response.json()
             assert set(body) == {"variety", "ripeness", "confidence"}
             # The predicted label must be one the shipped labels.txt defines.
-            predicted = f"{body['variety']}_{body['ripeness']}"
+            # NotBanana is the one class with no ripeness, so it rejoins as the
+            # bare variety rather than "Variety_Ripeness" — a synthetic image
+            # like this one is exactly what it is trained to catch.
+            ripeness = body["ripeness"]
+            predicted = f"{body['variety']}_{ripeness}" if ripeness else body["variety"]
             assert predicted in _SHIPPED.load_labels()
             assert 0.0 <= body["confidence"] <= 1.0
         finally:

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:banana_classifier/models/app_exception.dart';
+import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/services/tflite_inference_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -227,10 +228,18 @@ void main() {
       File(TFLiteInferenceService.defaultLabelsAsset).readAsStringSync(),
     );
 
-    test('labels.txt lists all 18 variety × ripeness classes', () {
-      expect(labels, hasLength(18));
-      expect(labels.toSet(), hasLength(18));
+    test('labels.txt lists all 18 variety × ripeness classes plus NotBanana',
+        () {
+      expect(labels, hasLength(19));
+      expect(labels.toSet(), hasLength(19));
+      expect(labels, contains(ClassificationResult.notBananaVariety));
       for (final label in labels) {
+        if (label == ClassificationResult.notBananaVariety) {
+          // The rejection class has no ripeness, and deliberately no
+          // underscore — decodeProbabilities splits on the first one.
+          expect(label, isNot(contains('_')));
+          continue;
+        }
         expect(label, matches(RegExp(r'^[A-Z][a-z]+_(Unripe|Ripe|Overripe)$')));
       }
     });
