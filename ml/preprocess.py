@@ -151,7 +151,7 @@ def require_directory(path: Path) -> Path:
 
 
 def validate_dataset_structure(root: Path) -> None:
-    """Check that *root* contains a subdirectory for every one of the 18 classes.
+    """Check that *root* contains a subdirectory for every one of the classes.
 
     Expected layout::
 
@@ -161,6 +161,7 @@ def validate_dataset_structure(root: Path) -> None:
           Cavendish_Overripe/
           ...
           Saba_Overripe/
+          NotBanana/
 
     Raises
     ------
