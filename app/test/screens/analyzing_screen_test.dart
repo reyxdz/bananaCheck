@@ -350,7 +350,8 @@ void main() {
       // spinner animates forever, so pumpAndSettle would never return.
       await tester.pump();
 
-      expect(find.text(const LowConfidenceException().userMessage), findsNothing);
+      expect(
+          find.text(const LowConfidenceException().userMessage), findsNothing);
       expect(delivered?.variety, 'Lakatan');
       expect(storageService.saveCallCount, 1);
     });

@@ -104,8 +104,6 @@ class BundleScanResult {
     }
     if (counts.isEmpty) return null;
 
-    return counts.entries
-        .reduce((a, b) => b.value > a.value ? b : a)
-        .key;
+    return counts.entries.reduce((a, b) => b.value > a.value ? b : a).key;
   }
 }

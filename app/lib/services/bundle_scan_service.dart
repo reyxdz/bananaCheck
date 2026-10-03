@@ -107,7 +107,8 @@ class BundleScanService {
       final windowSize = (shorterSide * scale).round();
       if (windowSize <= 0) continue;
 
-      final stride = (windowSize * _strideFraction).round().clamp(1, windowSize);
+      final stride =
+          (windowSize * _strideFraction).round().clamp(1, windowSize);
 
       for (var top = 0; top <= image.height - windowSize; top += stride) {
         for (var left = 0; left <= image.width - windowSize; left += stride) {
