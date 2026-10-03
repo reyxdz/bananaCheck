@@ -324,6 +324,39 @@ void main() {
       expect(storageService.saveCallCount, 0);
     });
 
+    testWidgets('rejects a scan whose margin sits just under the threshold',
+        (tester) async {
+      // Pins the tuned 0.20 gate (B18): 0.19 must be refused, and the test
+      // below shows 0.80 is not. Without this, raising or lowering the
+      // constant would pass silently.
+      final borderline = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Overripe',
+        confidence: 0.70,
+        margin: 0.19,
+      );
+      final storageService = _FakeStorageService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: _InstantInferenceService(result: borderline),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text(const LowConfidenceException().userMessage),
+        findsOneWidget,
+      );
+      expect(storageService.saveCallCount, 0);
+    });
+
     testWidgets('a confident banana with a clear margin still shows results',
         (tester) async {
       final good = ClassificationResult(
