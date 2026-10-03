@@ -41,7 +41,7 @@ Programmatic::
     from ml.train import TrainingConfig, build_model, train
 
     config = TrainingConfig(data_dir=Path("ml/data_split"))
-    model = build_model(num_classes=18)
+    model = build_model(num_classes=NUM_CLASSES)
     history = train(model, config)
 """
 
@@ -160,7 +160,7 @@ def build_model(
     Parameters
     ----------
     num_classes:
-        Number of output classes (default: 18 from ``ml.classes``).
+        Number of output classes (default: ``NUM_CLASSES`` from ``ml.classes``).
     image_width, image_height:
         Spatial input dimensions.
     dropout_rate:
