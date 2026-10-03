@@ -1,3 +1,4 @@
+import importlib
 import io
 from pathlib import Path
 
@@ -202,24 +203,41 @@ class TestClassifyEndpoint:
 
 
 class TestGetInferenceServiceDependency:
-    def test_returns_503_when_model_cannot_be_loaded(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
+    def test_returns_503_when_model_cannot_be_loaded(self, tmp_path: Path) -> None:
         """The dependency converts a load failure into a clean 503."""
-        monkeypatch.setenv("BANANA_LABELS_PATH", str(tmp_path / "absent.txt"))
-        monkeypatch.setenv("BANANA_MODEL_PATH", str(tmp_path / "absent.tflite"))
+        bogus = BackendConfig(
+            labels_path=tmp_path / "absent.txt",
+            model_path=tmp_path / "absent.tflite",
+        )
         _cached_inference_service.cache_clear()
+        try:
+            with pytest.raises(HTTPException) as excinfo:
+                get_inference_service(bogus)
+            assert excinfo.value.status_code == 503
+        finally:
+            _cached_inference_service.cache_clear()
 
-        with pytest.raises(HTTPException) as excinfo:
-            get_inference_service()
-        assert excinfo.value.status_code == 503
+    def test_app_config_drives_model_loading(self, tmp_path: Path) -> None:
+        """Regression: create_app(config) must not silently use the default model.
 
+        The inference service used to be cached from the environment-derived
+        config, so an app built with a custom ``model_path`` loaded the shipped
+        model anyway — a model-testing tool quietly testing the wrong model.
+        """
+        bogus = BackendConfig(
+            model_path=tmp_path / "absent.tflite",
+            labels_path=tmp_path / "absent.txt",
+        )
         _cached_inference_service.cache_clear()
-
-
-# ---------------------------------------------------------------------------
-# Upload validation (B23)
-# ---------------------------------------------------------------------------
+        try:
+            client = TestClient(create_app(bogus))
+            response = client.post(
+                "/classify",
+                files={"image": ("b.jpg", _jpeg_bytes(), "image/jpeg")},
+            )
+            assert response.status_code == 503
+        finally:
+            _cached_inference_service.cache_clear()
 
 
 class TestUploadValidation:
@@ -275,3 +293,159 @@ class TestUploadValidation:
         )
 
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# API edge cases (B24)
+# ---------------------------------------------------------------------------
+
+
+class TestClassifyEdgeCases:
+    def test_rejects_get_with_405(self) -> None:
+        """Only POST is defined for /classify."""
+        assert _client(_stub_service([1.0, 0.0, 0.0])).get("/classify").status_code == 405
+
+    def test_rejects_non_multipart_body_with_422(self) -> None:
+        """A JSON body is not a file upload."""
+        client = _client(_stub_service([1.0, 0.0, 0.0]))
+        response = client.post("/classify", json={"image": "not-a-file"})
+        assert response.status_code == 422
+
+    def test_rejects_wrong_field_name_with_422(self) -> None:
+        client = _client(_stub_service([1.0, 0.0, 0.0]))
+        response = client.post(
+            "/classify", files={"file": ("banana.jpg", _jpeg_bytes(), "image/jpeg")}
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize("mode,colour", [("L", 128), ("RGBA", (10, 20, 30, 200))])
+    def test_accepts_non_rgb_images(self, mode: str, colour: object) -> None:
+        """Grayscale and RGBA decode fine — preprocessing converts to RGB."""
+        buf = io.BytesIO()
+        Image.new(mode, (48, 48), colour).save(buf, format="PNG")
+
+        client = _client(_stub_service([0.0, 1.0, 0.0]))
+        response = client.post(
+            "/classify", files={"image": ("x.png", buf.getvalue(), "image/png")}
+        )
+
+        assert response.status_code == 200
+        assert response.json()["variety"] == "Lakatan"
+
+    def test_accepts_single_pixel_image(self) -> None:
+        """A 1x1 image is degenerate but valid; it upscales to the model input."""
+        buf = io.BytesIO()
+        Image.new("RGB", (1, 1), (255, 0, 0)).save(buf, format="PNG")
+
+        client = _client(_stub_service([0.0, 0.0, 1.0]))
+        response = client.post(
+            "/classify", files={"image": ("tiny.png", buf.getvalue(), "image/png")}
+        )
+
+        assert response.status_code == 200
+
+    def test_accepts_large_dimension_image(self) -> None:
+        """A high-resolution photo is downscaled rather than rejected."""
+        buf = io.BytesIO()
+        Image.new("RGB", (2000, 1500), (180, 160, 40)).save(buf, format="JPEG")
+
+        client = _client(_stub_service([1.0, 0.0, 0.0]))
+        response = client.post(
+            "/classify", files={"image": ("big.jpg", buf.getvalue(), "image/jpeg")}
+        )
+
+        assert response.status_code == 200
+
+    def test_rejects_truncated_image_with_400(self) -> None:
+        """Valid JPEG magic bytes but a truncated body is still undecodable."""
+        truncated = _jpeg_bytes(size=128)[:80]
+
+        client = _client(_stub_service([1.0, 0.0, 0.0]))
+        response = client.post(
+            "/classify", files={"image": ("cut.jpg", truncated, "image/jpeg")}
+        )
+
+        assert response.status_code == 400
+
+    def test_response_matches_the_schema_contract(self) -> None:
+        """Response carries exactly the Dart ClassificationResult fields (B21)."""
+        client = _client(_stub_service([0.1, 0.75, 0.15]))
+        body = client.post(
+            "/classify", files={"image": ("b.jpg", _jpeg_bytes(), "image/jpeg")}
+        ).json()
+
+        assert set(body) == {"variety", "ripeness", "confidence"}
+        assert isinstance(body["variety"], str)
+        assert isinstance(body["ripeness"], str)
+        assert 0.0 <= body["confidence"] <= 1.0
+
+    def test_classify_is_documented_in_openapi(self) -> None:
+        spec = create_app(BackendConfig()).openapi()
+        assert "post" in spec["paths"]["/classify"]
+        schema = spec["paths"]["/classify"]["post"]["responses"]["200"]["content"][
+            "application/json"
+        ]["schema"]
+        assert schema["$ref"].endswith("ClassificationResponse")
+
+
+# ---------------------------------------------------------------------------
+# Real-model integration (B24)
+# ---------------------------------------------------------------------------
+#
+# Every test above stubs the predictor, so the actual TFLite loading path is
+# never exercised. These run against the *shipped* model and skip cleanly when
+# the model asset or a TFLite runtime is unavailable (e.g. a lean CI image).
+
+
+def _tflite_runtime_available() -> bool:
+    for module in ("ai_edge_litert", "tensorflow"):
+        try:
+            importlib.import_module(module)
+            return True
+        except ImportError:
+            continue
+    return False
+
+
+_SHIPPED = BackendConfig()
+_REAL_MODEL_READY = (
+    _SHIPPED.model_path.is_file()
+    and _SHIPPED.labels_path.is_file()
+    and _tflite_runtime_available()
+)
+
+
+@pytest.mark.skipif(
+    not _REAL_MODEL_READY,
+    reason="bundled .tflite or a TFLite runtime is unavailable",
+)
+class TestRealModelIntegration:
+    def test_predictor_loads_and_returns_a_distribution(self) -> None:
+        """Covers load_tflite_predictor against the real shipped model."""
+        predict = load_tflite_predictor(_SHIPPED.model_path)
+        probabilities = list(predict(preprocess_image(_jpeg_bytes(size=224))))
+
+        labels = _SHIPPED.load_labels()
+        assert len(probabilities) == len(labels)
+        assert all(0.0 <= p <= 1.0 for p in probabilities)
+        assert sum(probabilities) == pytest.approx(1.0, abs=1e-3)
+
+    def test_endpoint_classifies_with_the_bundled_model(self) -> None:
+        """End-to-end: no stubbing — real model, real labels, real HTTP."""
+        _cached_inference_service.cache_clear()
+        try:
+            client = TestClient(create_app(BackendConfig()))
+            response = client.post(
+                "/classify",
+                files={"image": ("banana.jpg", _jpeg_bytes(size=224), "image/jpeg")},
+            )
+
+            assert response.status_code == 200
+            body = response.json()
+            assert set(body) == {"variety", "ripeness", "confidence"}
+            # The predicted label must be one the shipped labels.txt defines.
+            predicted = f"{body['variety']}_{body['ripeness']}"
+            assert predicted in _SHIPPED.load_labels()
+            assert 0.0 <= body["confidence"] <= 1.0
+        finally:
+            _cached_inference_service.cache_clear()
