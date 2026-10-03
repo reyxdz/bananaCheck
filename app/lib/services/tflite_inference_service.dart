@@ -28,7 +28,7 @@ import 'inference_service.dart';
 /// Construct via [TFLiteInferenceService.create] in production; the primary
 /// constructor takes an already-loaded [Interpreter] and labels so the
 /// classification logic can be unit-tested without native assets.
-class TFLiteInferenceService implements InferenceService {
+class TFLiteInferenceService implements InferenceService, RegionClassifier {
   TFLiteInferenceService({
     required Interpreter interpreter,
     required List<String> labels,
@@ -93,21 +93,26 @@ class TFLiteInferenceService implements InferenceService {
         throw const ImageProcessingException();
       }
 
-      final input = imageToInput(decoded, _inputSize);
-      final output = <List<double>>[List<double>.filled(_labels.length, 0)];
-      _interpreter.run(input, output);
-
-      if (kDebugMode) {
-        debugPrint('\u{1F34C} ${describeTopScores(output.first, _labels)}');
-      }
-
-      return decodeProbabilities(output.first, _labels);
+      return classifyRegion(decoded);
     } on AppException {
       rethrow;
     } catch (_) {
       // Any decode/inference failure surfaces as a plain-language image error.
       throw const ImageProcessingException();
     }
+  }
+
+  @override
+  ClassificationResult classifyRegion(img.Image region) {
+    final input = imageToInput(region, _inputSize);
+    final output = <List<double>>[List<double>.filled(_labels.length, 0)];
+    _interpreter.run(input, output);
+
+    if (kDebugMode) {
+      debugPrint('\u{1F34C} ${describeTopScores(output.first, _labels)}');
+    }
+
+    return decodeProbabilities(output.first, _labels);
   }
 
   /// Release native interpreter resources. Call when the service is disposed.
