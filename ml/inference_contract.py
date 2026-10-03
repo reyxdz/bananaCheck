@@ -97,7 +97,8 @@ class InferenceResult(NamedTuple):
     variety:
         Predicted banana variety, e.g. ``"Lakatan"``.
     ripeness:
-        Predicted ripeness stage, e.g. ``"Ripe"``.
+        Predicted ripeness stage, e.g. ``"Ripe"`` — empty for the
+        ``NotBanana`` rejection class, which has no ripeness.
     confidence:
         Maximum probability from the softmax output (0.0–1.0).
     """
@@ -144,6 +145,6 @@ def decode_output(probabilities: Sequence[float]) -> InferenceResult:
 
     return InferenceResult(
         variety=str(predicted_class.variety),
-        ripeness=str(predicted_class.ripeness),
+        ripeness=predicted_class.ripeness_name,
         confidence=confidence,
     )

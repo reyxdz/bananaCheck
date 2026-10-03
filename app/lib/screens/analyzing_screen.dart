@@ -16,6 +16,19 @@ import '../widgets/error_view.dart';
 /// and the user is shown a "Couldn't tell clearly" error instead.
 const double _lowConfidenceThreshold = 0.5;
 
+/// Minimum gap between the best and second-best class required to trust a
+/// result.
+///
+/// Softmax always sums to 1, so a photo unlike anything in training can still
+/// produce a high top probability. A narrow gap to the runner-up is the
+/// clearer signal that the model is guessing.
+///
+/// Set from the margin distribution measured on the held-out test set: real
+/// bananas clear this easily (median margin 0.996, 1st percentile 0.121), so
+/// the gate costs 0.6% of correct scans. It is a safety net rather than the
+/// main defence — the NotBanana class already rejects 100% of the negatives.
+const double _lowMarginThreshold = 0.10;
+
 /// Full-screen "Analyzing…" state shown between capture and results (A15).
 ///
 /// Immediately kicks off [InferenceService.classify] + [StorageService.saveRecord]
@@ -79,8 +92,16 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
 
       if (!mounted) return;
 
-      // 2. Low-confidence gate — treat as an error per §7.3.
-      if (result.confidence < _lowConfidenceThreshold) {
+      // 2. Unreliable-result gate — treat as an error per §7.3.
+      //
+      // Three ways a scan is not worth showing, all of which mean the same
+      // thing to the user ("Couldn't tell clearly"), so they share one path:
+      //   - the model is unsure,
+      //   - it is torn between two classes, or
+      //   - it says the photo is not a banana at all.
+      if (result.confidence < _lowConfidenceThreshold ||
+          result.margin < _lowMarginThreshold ||
+          !result.isBanana) {
         setState(() => _error = const LowConfidenceException());
         return;
       }

@@ -102,7 +102,7 @@ def test_decode_output_with_one_hot_returns_correct_class() -> None:
         result = decode_output(probs)
 
         assert result.variety == str(banana_class.variety)
-        assert result.ripeness == str(banana_class.ripeness)
+        assert result.ripeness == banana_class.ripeness_name
         assert result.confidence == 1.0
 
 
@@ -161,9 +161,9 @@ def test_decode_output_rejects_empty_list() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_output_spec_num_classes_equals_18() -> None:
-    """Sanity check: 6 varieties × 3 ripeness = 18."""
-    assert ModelOutputSpec().num_classes == 18
+def test_output_spec_num_classes_equals_19() -> None:
+    """Sanity check: 6 varieties × 3 ripeness, plus NotBanana."""
+    assert ModelOutputSpec().num_classes == 19
 
 
 def test_input_and_output_specs_are_frozen() -> None:
