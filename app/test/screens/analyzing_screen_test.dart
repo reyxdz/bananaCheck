@@ -25,6 +25,40 @@ class _InstantInferenceService implements InferenceService {
   Future<ClassificationResult> classify(File imageFile) async => result;
 }
 
+/// An inference service that throws a *structured* error, to check it is
+/// surfaced as-is rather than flattened into a generic one.
+class _StructuredFailureService implements InferenceService {
+  _StructuredFailureService(this.error);
+
+  final AppException error;
+
+  @override
+  Future<ClassificationResult> classify(File imageFile) async => throw error;
+}
+
+/// Fails the first call and succeeds afterwards, so retry can be exercised.
+class _FailsOnceService implements InferenceService {
+  _FailsOnceService(this.result);
+
+  final ClassificationResult result;
+  int calls = 0;
+
+  @override
+  Future<ClassificationResult> classify(File imageFile) async {
+    calls++;
+    if (calls == 1) throw Exception('transient');
+    return result;
+  }
+}
+
+/// Storage that refuses to save, to check a scan still reaches the results.
+class _FailingStorageService extends _FakeStorageService {
+  @override
+  Future<void> saveRecord(ScanRecord record) async {
+    throw Exception('disk full');
+  }
+}
+
 /// An inference service that always throws.
 class _FailingInferenceService implements InferenceService {
   @override
@@ -387,6 +421,79 @@ void main() {
           find.text(const LowConfidenceException().userMessage), findsNothing);
       expect(delivered?.variety, 'Lakatan');
       expect(storageService.saveCallCount, 1);
+    });
+
+    testWidgets('surfaces a structured error from the service unchanged',
+        (tester) async {
+      // AppExceptions carry their own plain-language text; flattening them to
+      // "Something went wrong" would lose the actionable part (§7.3).
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService:
+                _StructuredFailureService(const AppCameraException()),
+            storageService: _FakeStorageService(),
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text(const AppCameraException().userMessage),
+        findsOneWidget,
+      );
+      expect(find.text(const UnknownException().userMessage), findsNothing);
+    });
+
+    testWidgets('a storage failure still delivers the result', (tester) async {
+      ClassificationResult? delivered;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: _InstantInferenceService(result: defaultResult),
+            storageService: _FailingStorageService(),
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (result, __) => delivered = result,
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      // Classification succeeded, so the user must still see their result —
+      // only the saving failed, and that is reported separately.
+      expect(delivered, isNotNull);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+
+    testWidgets('retry clears the error and re-runs the scan', (tester) async {
+      final service = _FailsOnceService(defaultResult);
+      ClassificationResult? delivered;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            inferenceService: service,
+            storageService: _FakeStorageService(),
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (result, __) => delivered = result,
+          ),
+        ),
+      );
+
+      await tester.pump();
+      expect(find.text('Try Again'), findsOneWidget);
+      expect(delivered, isNull);
+
+      await tester.tap(find.text('Try Again'));
+      await tester.pump();
+
+      expect(service.calls, 2);
+      expect(delivered, isNotNull);
     });
   });
 }
