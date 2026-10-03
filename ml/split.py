@@ -191,7 +191,7 @@ def source_group(path: Path) -> str:
 
 def _split_groups(
     items: list[tuple[Path, int]],
-    cfg: "SplitConfig",
+    cfg: SplitConfig,
 ) -> tuple[list[tuple[Path, int]], list[tuple[Path, int]], list[tuple[Path, int]]]:
     """Split *items* three ways without ever separating a source group.
 
@@ -278,7 +278,13 @@ def split_dataset(
         )
 
     min_groups = min(
-        len({source_group(p) for p, l in zip(paths, labels, strict=True) if l == label})
+        len(
+            {
+                source_group(path)
+                for path, lbl in zip(paths, labels, strict=True)
+                if lbl == label
+            }
+        )
         for label in set(labels)
     )
     if min_groups < 3:
