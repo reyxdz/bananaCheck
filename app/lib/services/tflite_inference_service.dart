@@ -177,8 +177,9 @@ class TFLiteInferenceService implements InferenceService {
 
   /// Decode a probability vector into a [ClassificationResult].
   ///
-  /// Picks the highest-probability class (confidence = that probability) and
-  /// splits its label into variety and ripeness. Labels may use either the
+  /// Picks the highest-probability class (confidence = that probability),
+  /// records the gap to the runner-up as the margin, and splits the winning
+  /// label into variety and ripeness. Labels may use either the
   /// `Variety_Ripeness` (shipped `labels.txt`) or `Variety|Ripeness` format.
   @visibleForTesting
   static ClassificationResult decodeProbabilities(
@@ -193,10 +194,17 @@ class TFLiteInferenceService implements InferenceService {
     }
 
     var maxIndex = 0;
+    var runnerUp = double.negativeInfinity;
     for (var i = 1; i < probabilities.length; i++) {
       if (probabilities[i] > probabilities[maxIndex]) {
+        runnerUp = probabilities[maxIndex];
         maxIndex = i;
+      } else if (probabilities[i] > runnerUp) {
+        runnerUp = probabilities[i];
       }
+    }
+    if (runnerUp == double.negativeInfinity) {
+      runnerUp = 0;
     }
 
     final label = labels[maxIndex];
@@ -209,6 +217,7 @@ class TFLiteInferenceService implements InferenceService {
       variety: variety,
       ripeness: ripeness,
       confidence: probabilities[maxIndex].clamp(0.0, 1.0),
+      margin: (probabilities[maxIndex] - runnerUp).clamp(0.0, 1.0),
     );
   }
 }
