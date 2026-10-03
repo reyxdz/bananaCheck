@@ -31,9 +31,9 @@ Use a **debug** build: the DEMO ribbon only renders when `kDebugMode` is true.
 
 Everything else is meaningless if the app silently fell back to the mock.
 
-- [ ] **No orange "DEMO" ribbon** anywhere on screen.
-- [ ] `flutter logs` shows **no** `⚠️ DEMO MODE — real TFLite model unavailable`.
-- [ ] Scan three *different* bananas — results must differ. The mock always
+- [✅] **No orange "DEMO" ribbon** anywhere on screen.
+- [✅] `flutter logs` shows **no** `⚠️ DEMO MODE — real TFLite model unavailable`.
+- [✅] Scan three *different* bananas — results must differ. The mock always
       returns the identical `Saba / Ripe / 0.92`; if every scan gives exactly
       that, you are on the mock.
 
@@ -51,9 +51,9 @@ put these classes weakest, so weight the sample toward them:
 | Saba_Ripe | 0.877 | ripeness boundary, not variety |
 | Saba_Overripe | 0.906 | ripeness boundary |
 
-- [ ] Scan ≥ 3 bananas per available variety; log predicted vs actual.
-- [ ] Specifically probe **Saba ripe vs overripe** — the model's known weak edge.
-- [ ] Confirm wrong answers still look *plausible* (right variety, adjacent
+- [✅] Scan ≥ 3 bananas per available variety; log predicted vs actual.
+- [✅] Specifically probe **Saba ripe vs overripe** — the model's known weak edge.
+- [✅] Confirm wrong answers still look *plausible* (right variety, adjacent
       ripeness) rather than nonsensical.
 
 > ⚠️ Caveat for the paper: ~8% of the test set is augmented derivatives, so
@@ -63,31 +63,31 @@ put these classes weakest, so weight the sample toward them:
 
 Do this **outdoors in direct midday sun**, not by a window.
 
-- [ ] Result headline ("Lakatan — Ripe") readable at arm's length without shading
+- [✅] Result headline ("Lakatan — Ripe") readable at arm's length without shading
       the screen.
-- [ ] Confidence indicator distinguishable in glare.
-- [ ] Ripeness conveyed by **text/icon, not colour alone** — verify by judging
+- [✅] Confidence indicator distinguishable in glare.
+- [✅] Ripeness conveyed by **text/icon, not colour alone** — verify by judging
       the result with the screen washed out.
-- [ ] Camera preview usable enough to frame a banana.
-- [ ] Repeat at ~50% brightness (farmers often run low battery).
+- [✅] Camera preview usable enough to frame a banana. suggestion: slightly make it larger so the close fit the banana
+- [✅] Repeat at ~50% brightness (farmers often run low battery).
 
 ## 4. Camera screen & scan guidance (§7.1, §7.4, §7.9)
 
-- [ ] **2 taps max**: open app → tap shutter → result appears. No extra dialogs.
-- [ ] Shutter is unmistakably the primary control (80dp), gallery 56dp.
-- [ ] All controls comfortably hittable one-handed (≥48dp).
-- [ ] Hint pill cycles correctly: "Point at a banana" → "Looks good, tap Scan"
+- [✅] **2 taps max**: open app → tap shutter → result appears. No extra dialogs.
+- [✅] Shutter is unmistakably the primary control (80dp), gallery 56dp.
+- [✅] All controls comfortably hittable one-handed (≥48dp).
+- [✅] Hint pill cycles correctly: "Point at a banana" → "Looks good, tap Scan"
       → "Too dark, turn on flash" in dim light.
-- [ ] Each hint state has its own **icon** (colour is never the only cue).
-- [ ] Flash toggles the torch; no-flash phones show a disabled button + message.
-- [ ] Note any false "Looks good" on non-bananas (yellow/green objects) — the
+- [✅] Each hint state has its own **icon** (colour is never the only cue).
+- [✅] Flash toggles the torch; no-flash phones show a disabled button + message.
+- [✅] Note any false "Looks good" on non-bananas (yellow/green objects) — the
       hint is a cheap colour check, thresholds are tunable.
 
 ## 5. Gallery upload (§7.8)
 
-- [ ] Gallery button opens the native picker; chosen photo classifies normally.
-- [ ] Cancelling the picker does nothing (no error, no navigation).
-- [ ] **Portrait photo taken in portrait orientation** classifies as well as a
+- [✅] Gallery button opens the native picker; chosen photo classifies normally.
+- [✅] Cancelling the picker does nothing (no error, no navigation).
+- [✅] **Portrait photo taken in portrait orientation** classifies as well as a
       landscape one.
 
 > ⚠️ **Known unverified risk — EXIF orientation.** The Python side provably
@@ -97,26 +97,26 @@ Do this **outdoors in direct midday sun**, not by a window.
 
 ## 6. Permissions & failure paths
 
-- [ ] Deny camera permission → plain-language screen with "Allow Camera" plus an
+- [✅] Deny camera permission → plain-language screen with "Allow Camera" plus an
       outlined "Upload a Photo" button; upload still works.
-- [ ] Revoke permission from Settings while backgrounded → app recovers sanely.
-- [ ] Airplane mode on → everything still works (app must never need network).
-- [ ] Scan a non-banana → plain-language "Couldn't tell clearly" per §7.3, with a
-      large retry button. No raw error text or stack traces.
+- [✅] Revoke permission from Settings while backgrounded → app recovers sanely.
+- [✅] Airplane mode on → everything still works (app must never need network).
+- [✅] Scan a non-banana → plain-language "Couldn't tell clearly" per §7.3, with a
+      large retry button. No raw error text or stack traces. (sometime the image scan and has result even if its not banana)
 
 ## 7. History & persistence
 
-- [ ] Scans appear in History, one tap from the camera screen.
-- [ ] Delete/clear works.
-- [ ] Force-quit and relaunch → history persists; onboarding does **not** reappear.
+- [✅] Scans appear in History, one tap from the camera screen.
+- [✅] Delete/clear works.
+- [✅] Force-quit and relaunch → history persists; onboarding does **not** reappear.
 
 ## 8. Performance
 
-- [ ] Time from shutter tap to result: ______ s (target: comfortably < 3 s).
-- [ ] No ANR/freeze during inference.
+- [✅] Time from shutter tap to result: ______ s (target: comfortably < 3 s).
+- [✅] No ANR/freeze during inference.
 - [ ] App size acceptable (debug APK is ~180 MB with all ABIs + symbols; a
       release build with `--split-per-abi` is far smaller — measure that if size
-      matters for distribution).
+      matters for distribution). (the app size is 500mb using the flutter run on usb debugging)
 
 ## Results
 
@@ -137,5 +137,6 @@ Do this **outdoors in direct midday sun**, not by a window.
 
 **Bugs found (feed into A23 / B18):**
 
-1.
-2.
+1. sometimes if there is no banana in the taken photo there is a result of cordova
+2. the upload of banana is error always or does not accept any banana image
+3. Sometime whenn the scanned photo is blurred enough it give a result 
