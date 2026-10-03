@@ -97,6 +97,10 @@ class TFLiteInferenceService implements InferenceService {
       final output = <List<double>>[List<double>.filled(_labels.length, 0)];
       _interpreter.run(input, output);
 
+      if (kDebugMode) {
+        debugPrint('\u{1F34C} ${describeTopScores(output.first, _labels)}');
+      }
+
       return decodeProbabilities(output.first, _labels);
     } on AppException {
       rethrow;
@@ -148,6 +152,27 @@ class TFLiteInferenceService implements InferenceService {
         }),
       ),
     ];
+  }
+
+  /// Human-readable summary of the highest-scoring classes, for debug logs.
+  ///
+  /// Shows the top [count] `label probability%` pairs, highest first, so a
+  /// scan can be sanity-checked against the photo that produced it (e.g. to
+  /// see whether the right variety merely lost to a close runner-up).
+  @visibleForTesting
+  static String describeTopScores(
+    List<double> probabilities,
+    List<String> labels, {
+    int count = 3,
+  }) {
+    final ranked = List<int>.generate(probabilities.length, (i) => i)
+      ..sort((a, b) => probabilities[b].compareTo(probabilities[a]));
+
+    return ranked
+        .take(count)
+        .map((i) =>
+            '${labels[i]} ${(probabilities[i] * 100).toStringAsFixed(1)}%')
+        .join('  |  ');
   }
 
   /// Decode a probability vector into a [ClassificationResult].
