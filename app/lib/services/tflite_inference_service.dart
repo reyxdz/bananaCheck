@@ -88,7 +88,7 @@ class TFLiteInferenceService implements InferenceService, RegionClassifier {
   Future<ClassificationResult> classify(File imageFile) async {
     try {
       final bytes = await imageFile.readAsBytes();
-      final decoded = img.decodeImage(bytes);
+      final decoded = decodeUprightImage(bytes);
       if (decoded == null) {
         throw const ImageProcessingException();
       }
