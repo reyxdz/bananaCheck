@@ -4,6 +4,7 @@ import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/result_card.dart';
+import '../widgets/screen_header.dart';
 
 /// Displays the classification result after a scan.
 ///
@@ -33,110 +34,74 @@ class ResultsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: DesignTokens.background,
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top bar with branding ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                DesignTokens.spacingLarge,
-                DesignTokens.spacingMedium,
-                DesignTokens.spacingLarge,
-                0,
-              ),
-              child: Row(
-                children: [
-                  // Back arrow for system navigation (accessibility).
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    iconSize: DesignTokens.iconMedium,
-                    onPressed: onScanAgain,
-                    tooltip: 'Go back',
-                  ),
-                  const SizedBox(width: DesignTokens.spacingExtraSmall),
-                  Text(
-                    'Scan Result',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: DesignTokens.primaryDark,
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const Spacer(),
-                  ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 28,
-                      height: 28,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.eco,
-                        color: DesignTokens.primary,
-                        size: DesignTokens.iconAppBar,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            ScreenHeader(
+              title: 'Scan Result',
+              // Back arrow for system navigation (accessibility).
+              onBack: onScanAgain,
             ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
 
             // ── Main content — scrollable for small screens ──
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: DesignTokens.spacingLarge,
+                padding: const EdgeInsets.fromLTRB(
+                  DesignTokens.spacingMedium,
+                  DesignTokens.spacingSmall,
+                  DesignTokens.spacingMedium,
+                  DesignTokens.spacingLarge,
                 ),
                 child: Column(
                   children: [
-                    // The main result card (image + headline + confidence + advice).
-                    ResultCard(
-                      result: result,
-                      imagePath: imagePath,
-                    ),
+                    // Image + headline + confidence + advice + info.
+                    ResultCard(result: result, imagePath: imagePath),
 
                     const SizedBox(height: DesignTokens.spacingLarge),
 
                     // ── Helpful context line ──
-                    const Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: DesignTokens.spacingSmall,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: DesignTokens.spacingMedium,
                       ),
                       child: Text(
                         'Point at a different banana and scan again '
                         'if you want to check another one.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: DesignTokens.bodyTextSize,
-                          color: DesignTokens.textSecondary,
-                        ),
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
-
-                    const SizedBox(height: DesignTokens.spacingExtraLarge),
                   ],
                 ),
               ),
             ),
 
-            // ── Scan Again button — single primary action (§7.1) ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                DesignTokens.spacingLarge,
-                0,
-                DesignTokens.spacingLarge,
-                DesignTokens.spacingLarge,
+            // ── Scan Again — single primary action (§7.1), always visible ──
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                color: DesignTokens.background,
+                border: Border(
+                  top: BorderSide(
+                    color: DesignTokens.border,
+                    width: DesignTokens.sectionBorderWidth,
+                  ),
+                ),
               ),
-              child: SizedBox(
-                width: double.infinity,
-                height: DesignTokens.primaryActionSize,
-                child: PrimaryButton(
-                  icon: Icons.camera_alt_rounded,
-                  label: 'Scan Again',
-                  onPressed: onScanAgain,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  DesignTokens.spacingMedium,
+                  DesignTokens.spacingSmall + 4,
+                  DesignTokens.spacingMedium,
+                  DesignTokens.spacingMedium,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: DesignTokens.primaryActionSize,
+                  child: PrimaryButton(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Scan Again',
+                    onPressed: onScanAgain,
+                  ),
                 ),
               ),
             ),

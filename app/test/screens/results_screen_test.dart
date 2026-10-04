@@ -51,7 +51,8 @@ void main() {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
       // §7.3: large, clear text "Lakatan — Ripe" as the headline.
-      expect(find.text('Lakatan — Ripe'), findsOneWidget);
+      expect(find.text('Lakatan'), findsOneWidget);
+      expect(find.text('Ripe'), findsWidgets);
     });
 
     // ── §7.3: plain-language confidence, no jargon ──
@@ -70,14 +71,18 @@ void main() {
         (tester) async {
       await tester.pumpWidget(buildScreen(result: medConfidenceResult));
 
-      expect(find.text('Cavendish — Unripe'), findsOneWidget);
+      expect(find.text('Cavendish'), findsOneWidget);
+
+      expect(find.text('Unripe'), findsWidgets);
       expect(find.text('This looks likely'), findsOneWidget);
     });
 
     testWidgets('shows actionable message for low confidence', (tester) async {
       await tester.pumpWidget(buildScreen(result: lowConfidenceResult));
 
-      expect(find.text('Saba — Overripe'), findsOneWidget);
+      expect(find.text('Saba'), findsOneWidget);
+
+      expect(find.text('Overripe'), findsWidgets);
       expect(
         find.text('Not very clear — try another photo'),
         findsOneWidget,
@@ -202,7 +207,9 @@ void main() {
     testWidgets('renders without crash when imagePath is null', (tester) async {
       await tester.pumpWidget(buildScreen(result: highConfidenceResult));
 
-      expect(find.text('Lakatan — Ripe'), findsOneWidget);
+      expect(find.text('Lakatan'), findsOneWidget);
+
+      expect(find.text('Ripe'), findsWidgets);
     });
 
     testWidgets('content is scrollable for small screens', (tester) async {

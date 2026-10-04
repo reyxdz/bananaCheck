@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import '../models/banana_info_data.dart';
 import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
-import '../theme/ripeness_helpers.dart';
 import 'confidence_indicator.dart';
-import 'info_pill.dart';
 import 'section_container.dart';
 import 'dish_suggestions_card.dart';
 import 'health_benefits_card.dart';
+import 'result_headline.dart';
+import 'reveal.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -45,120 +45,80 @@ class ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ripenessColor = RipenessHelpers.colorFor(result.ripeness);
-    final ripenessIcon = RipenessHelpers.iconFor(result.ripeness);
-
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(DesignTokens.spacingLarge),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Image thumbnail (if available) ──
-            if (imagePath != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: DesignTokens.imageThumbnailSize,
-                  child: Image.file(
-                    File(imagePath!),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: DesignTokens.background,
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          color: DesignTokens.textSecondary,
-                          size: DesignTokens.iconLarge,
-                        ),
-                      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── The scanned photo as the hero ──
+          if (imagePath != null)
+            SizedBox(
+              height: DesignTokens.resultHeroHeight,
+              child: Image.file(
+                File(imagePath!),
+                fit: BoxFit.cover,
+                semanticLabel: 'Your scanned banana',
+                errorBuilder: (_, __, ___) => const ColoredBox(
+                  color: DesignTokens.surfaceMuted,
+                  child: Center(
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: DesignTokens.textSecondary,
+                      size: DesignTokens.iconLarge,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: DesignTokens.spacingLarge),
-            ],
+            ),
 
-            // ── Pill Badges (Variety + Ripeness) ──
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: DesignTokens.spacingSmall,
-              runSpacing: DesignTokens.spacingSmall,
+          Padding(
+            padding: const EdgeInsets.all(DesignTokens.spacingLarge),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                InfoPill(
-                  icon: Icons.eco,
-                  label: result.variety,
-                  color: DesignTokens.primaryDark,
-                ),
-                InfoPill(
-                  icon: ripenessIcon,
-                  label: result.ripeness,
-                  color: ripenessColor,
-                  outlined: true,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Variety — Ripeness headline (§7.3) ──
-            Text(
-              '${result.variety} — ${result.ripeness}',
-              style: const TextStyle(
-                fontSize: DesignTokens.resultHeadlineSize,
-                fontWeight: FontWeight.w800,
-                color: DesignTokens.textPrimary,
-                height: 1.2,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Divider ──
-            const Divider(color: DesignTokens.border, height: 1),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Plain-language confidence (§7.3) ──
-            ConfidenceIndicator(confidence: result.confidence),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Farmer/Vendor Handling Advice Card ──
-            SectionContainer(
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.tips_and_updates_outlined,
-                    color: DesignTokens.accent,
-                    size: DesignTokens.iconSectionHeader,
+                // ── Headline: variety large, ripeness badge + meaning ──
+                Reveal(
+                  child: ResultHeadline(
+                    variety: result.variety,
+                    ripeness: result.ripeness,
                   ),
-                  const SizedBox(width: DesignTokens.spacingSmall),
-                  Expanded(
+                ),
+
+                const SizedBox(height: DesignTokens.spacingLarge),
+
+                // ── Plain-language confidence (§7.3) ──
+                Reveal(
+                  order: 2,
+                  child: SectionContainer(
+                    child: ConfidenceIndicator(confidence: result.confidence),
+                  ),
+                ),
+
+                const SizedBox(height: DesignTokens.spacingSmall + 4),
+
+                // ── Farmer/vendor handling advice ──
+                Reveal(
+                  order: 3,
+                  child: SectionContainer(
+                    title: 'Handling tip',
+                    icon: Icons.tips_and_updates_outlined,
+                    iconColor: DesignTokens.warning,
+                    background: DesignTokens.accentLight,
                     child: Text(
                       _vendorRecommendation,
-                      style: const TextStyle(
-                        fontSize: DesignTokens.chipTextSize,
-                        fontWeight: FontWeight.w500,
-                        color: DesignTokens.textSecondary,
-                      ),
+                      style: Theme.of(context).textTheme.bodyLarge,
                     ),
                   ),
-                ],
-              ),
-            ),
+                ),
 
-            // ── Health Benefits & Dish Suggestions ──
-            _buildInfoCards(),
-          ],
-        ),
+                // ── Health Benefits & Dish Suggestions ──
+                _buildInfoCards(),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -176,11 +136,17 @@ class ResultCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: DesignTokens.spacingMedium),
-        HealthBenefitsCard(info: info, ripeness: lowerRipeness),
+        const SizedBox(height: DesignTokens.spacingSmall + 4),
+        Reveal(
+          order: 4,
+          child: HealthBenefitsCard(info: info, ripeness: lowerRipeness),
+        ),
         if (ripenessInfo != null) ...[
-          const SizedBox(height: DesignTokens.spacingMedium),
-          DishSuggestionsCard(ripenessInfo: ripenessInfo),
+          const SizedBox(height: DesignTokens.spacingSmall + 4),
+          Reveal(
+            order: 5,
+            child: DishSuggestionsCard(ripenessInfo: ripenessInfo),
+          ),
         ],
       ],
     );
