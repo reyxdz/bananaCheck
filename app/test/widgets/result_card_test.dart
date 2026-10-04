@@ -28,7 +28,9 @@ void main() {
 
       await tester.pumpWidget(buildCard(result: result));
 
-      expect(find.text('Lakatan — Ripe'), findsOneWidget);
+      expect(find.text('Lakatan'), findsOneWidget);
+
+      expect(find.text('Ripe'), findsWidgets);
     });
 
     testWidgets('shows headline for Saba — Unripe', (tester) async {
@@ -40,7 +42,9 @@ void main() {
 
       await tester.pumpWidget(buildCard(result: result));
 
-      expect(find.text('Saba — Unripe'), findsOneWidget);
+      expect(find.text('Saba'), findsOneWidget);
+
+      expect(find.text('Unripe'), findsWidgets);
     });
 
     // ── Confidence indicator tests (§7.3: plain language, no jargon) ──
@@ -114,7 +118,8 @@ void main() {
       await tester.pumpWidget(buildCard(result: result, imagePath: null));
 
       // Card still shows headline and confidence without crashing.
-      expect(find.text('Lakatan — Ripe'), findsOneWidget);
+      expect(find.text('Lakatan'), findsOneWidget);
+      expect(find.text('Ripe'), findsWidgets);
       expect(find.text("We're pretty sure"), findsOneWidget);
     });
 

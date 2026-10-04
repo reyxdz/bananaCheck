@@ -48,6 +48,11 @@ class ConfidenceIndicator extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        Text(
+          'How sure we are',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        const SizedBox(height: DesignTokens.spacingSmall),
         // Friendly label + icon (§7.2: pair icon with text, §7.4: never
         // rely on color alone).
         Row(
@@ -67,7 +72,7 @@ class ConfidenceIndicator extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: DesignTokens.spacingSmall),
+        const SizedBox(height: DesignTokens.spacingSmall + 4),
 
         // Simple filled-bar indicator (3 bars max).
         _ConfidenceBars(filledCount: level.bars, color: level.color),
@@ -102,8 +107,8 @@ class _ConfidenceBars extends StatelessWidget {
   final Color color;
 
   static const int _totalBars = 3;
-  static const double _barHeight = 6;
-  static const double _barSpacing = 4;
+  static const double _barHeight = 8;
+  static const double _barSpacing = 6;
 
   @override
   Widget build(BuildContext context) {
