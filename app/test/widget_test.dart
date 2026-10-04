@@ -389,7 +389,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Saba — Ripe'), findsOneWidget);
+    expect(find.text('Saba'), findsOneWidget);
+
+    expect(find.text('Ripe'), findsWidgets);
     final records = await storage.getRecords();
     expect(records.single.imagePath, photo.path);
 

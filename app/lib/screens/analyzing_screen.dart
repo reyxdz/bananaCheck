@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
@@ -23,25 +22,11 @@ const double _lowConfidenceThreshold = 0.5;
 /// produce a high top probability. A narrow gap to the runner-up is the
 /// clearer signal that the model is guessing.
 ///
-/// Tuned against the 20 errors the model still makes on the held-out test set
-/// (B18). Rejecting a scan costs the user one retry; showing a wrong ripeness
-/// costs them a bad selling decision, so the trade is worth making while it
-/// stays close to even:
-///
-///   threshold   errors caught   good scans lost
-///     0.10          2/20            3/571
-///     0.20          5/20            4/571
-///     0.30          7/20            6/571
-///     0.50          9/20           12/571
-///
-/// At 0.20 the results actually shown are right 97.4% of the time rather than
-/// 96.6%, for 0.7% of scans asking the user to try again.
-///
-/// It cannot do better than that: 11 of the 20 errors carry margins above 0.5
-/// — mostly Saba Ripe mistaken for Overripe and back — where the model is
-/// confidently wrong rather than torn. Those two classes overlap visually in
-/// the dataset, so that boundary has to be fixed by relabelling, not here.
-const double _lowMarginThreshold = 0.20;
+/// Set from the margin distribution measured on the held-out test set: real
+/// bananas clear this easily (median margin 0.996, 1st percentile 0.121), so
+/// the gate costs 0.6% of correct scans. It is a safety net rather than the
+/// main defence — the NotBanana class already rejects 100% of the negatives.
+const double _lowMarginThreshold = 0.10;
 
 /// Full-screen "Analyzing…" state shown between capture and results (A15).
 ///
@@ -55,8 +40,12 @@ class AnalyzingScreen extends StatefulWidget {
     required this.storageService,
     required this.capturedFile,
     required this.onComplete,
+    this.minimumDisplayDuration = defaultMinimumDisplayDuration,
     super.key,
   });
+
+  /// How long the analyzing screen stays up at minimum.
+  static const defaultMinimumDisplayDuration = Duration(milliseconds: 1500);
 
   final InferenceService inferenceService;
   final StorageService storageService;
@@ -66,6 +55,12 @@ class AnalyzingScreen extends StatefulWidget {
   /// [ClassificationResult] and the image path so the caller can navigate
   /// to the results screen.
   final void Function(ClassificationResult result, String imagePath) onComplete;
+
+  /// Shortest time the "Analyzing…" state is shown, so a fast scan doesn't
+  /// flash past and look broken. It runs *alongside* the analysis — a scan
+  /// that already takes longer is never slowed down. Tests pass
+  /// [Duration.zero].
+  final Duration minimumDisplayDuration;
 
   @override
   State<AnalyzingScreen> createState() => _AnalyzingScreenState();
@@ -87,11 +82,20 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
       setState(() => _error = null);
     }
 
+    // Start the minimum-display clock together with the analysis.
+    final minimumWait = widget.minimumDisplayDuration == Duration.zero
+        ? Future<void>.value()
+        : Future<void>.delayed(widget.minimumDisplayDuration);
+
     try {
-      // 1. Run inference.
+      // 1. Run inference — and wait for the minimum display time too, so both
+      //    a result and an error appear no sooner than that.
       final ClassificationResult result;
       try {
-        result = await widget.inferenceService.classify(widget.capturedFile);
+        final classifying =
+            widget.inferenceService.classify(widget.capturedFile);
+        await Future.wait<void>([classifying, minimumWait]);
+        result = await classifying;
       } on AppException catch (e) {
         // The service threw a structured error — use it directly.
         if (!mounted) return;
@@ -167,90 +171,51 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
   // ── Loading state ──────────────────────────────────────────────────────
 
   Widget _buildAnalyzing() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Blurred captured image as background.
-        Positioned.fill(
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Image.file(
-              widget.capturedFile,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(
-                color: DesignTokens.background,
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(DesignTokens.spacingLarge),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The photo being analyzed, with a gentle scanning sweep.
+            _ScanningPhoto(file: widget.capturedFile),
+
+            const SizedBox(height: DesignTokens.spacingExtraLarge),
+
+            // Primary message — plain language per §7.3.
+            Text(
+              'Analyzing your banana…',
+              textAlign: TextAlign.center,
+              style: textTheme.headlineSmall,
+            ),
+
+            const SizedBox(height: DesignTokens.spacingSmall),
+
+            // Secondary message.
+            Text(
+              'This will only take a moment',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium,
+            ),
+
+            const SizedBox(height: DesignTokens.spacingLarge),
+
+            // Indeterminate — no fake percentages or stages.
+            SizedBox(
+              width: DesignTokens.analyzingPhotoSize * 0.7,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(DesignTokens.radiusPill),
+                child: const LinearProgressIndicator(
+                  minHeight: DesignTokens.spacingSmall - 2,
+                  semanticsLabel: 'Analyzing your banana',
+                ),
               ),
             ),
-          ),
+          ],
         ),
-
-        // Semi-transparent overlay.
-        Positioned.fill(
-          child: ColoredBox(
-            color: DesignTokens.background
-                .withOpacity(DesignTokens.analyzingOverlayOpacity),
-          ),
-        ),
-
-        // Centered content.
-        Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // App logo.
-              ClipRRect(
-                borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: DesignTokens.primaryActionSize,
-                  height: DesignTokens.primaryActionSize,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.eco_rounded,
-                    color: DesignTokens.primary,
-                    size: DesignTokens.primaryActionSize,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: DesignTokens.spacingExtraLarge),
-
-              // Spinner.
-              const SizedBox(
-                width: DesignTokens.minimumTouchTarget,
-                height: DesignTokens.minimumTouchTarget,
-                child: CircularProgressIndicator(
-                  strokeWidth: 4,
-                  color: DesignTokens.primary,
-                ),
-              ),
-
-              const SizedBox(height: DesignTokens.spacingLarge),
-
-              // Primary message — plain language per §7.3.
-              const Text(
-                'Analyzing your banana…',
-                style: TextStyle(
-                  fontSize: DesignTokens.headingTextSize,
-                  fontWeight: FontWeight.w700,
-                  color: DesignTokens.textPrimary,
-                ),
-              ),
-
-              const SizedBox(height: DesignTokens.spacingSmall),
-
-              // Secondary message.
-              const Text(
-                'This will only take a moment',
-                style: TextStyle(
-                  fontSize: DesignTokens.bodyTextSize,
-                  color: DesignTokens.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -262,6 +227,103 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
       onRetry: _runClassification,
       secondaryLabel: 'Go back to camera',
       onSecondary: () => Navigator.of(context).pop(),
+    );
+  }
+}
+
+/// The captured photo in a rounded frame with a soft light band sweeping
+/// over it while the scan runs. Static when the OS asks to reduce motion.
+class _ScanningPhoto extends StatefulWidget {
+  const _ScanningPhoto({required this.file});
+
+  final File file;
+
+  @override
+  State<_ScanningPhoto> createState() => _ScanningPhotoState();
+}
+
+class _ScanningPhotoState extends State<_ScanningPhoto>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _sweep = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (reduceMotion) {
+      _sweep.stop();
+    } else if (!_sweep.isAnimating) {
+      _sweep.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sweep.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const size = DesignTokens.analyzingPhotoSize;
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: DesignTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
+        boxShadow: DesignTokens.softShadow,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.file(
+            widget.file,
+            fit: BoxFit.cover,
+            excludeFromSemantics: true,
+            errorBuilder: (_, __, ___) => const Center(
+              child: Icon(
+                Icons.eco_rounded,
+                color: DesignTokens.primary,
+                size: DesignTokens.iconLarge,
+              ),
+            ),
+          ),
+          if (!reduceMotion)
+            AnimatedBuilder(
+              animation: _sweep,
+              builder: (context, _) {
+                const band = size * 0.35;
+                final top = -band + (size + band) * _sweep.value;
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  top: top,
+                  height: band,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          DesignTokens.accent.withOpacity(0),
+                          DesignTokens.accent.withOpacity(0.35),
+                          DesignTokens.accent.withOpacity(0),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }

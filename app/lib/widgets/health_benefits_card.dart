@@ -28,32 +28,12 @@ class HealthBenefitsCard extends StatelessWidget {
     final ripenessInfo = info.byRipeness[ripeness];
 
     return SectionContainer(
+      title: 'Health Benefits',
+      icon: Icons.favorite_rounded,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Section header ──
-          const Row(
-            children: [
-              Icon(
-                Icons.favorite_rounded,
-                color: DesignTokens.primary,
-                size: DesignTokens.iconDefault,
-              ),
-              SizedBox(width: DesignTokens.spacingSmall),
-              Text(
-                'Health Benefits',
-                style: TextStyle(
-                  fontSize: DesignTokens.subheadingTextSize,
-                  fontWeight: FontWeight.w700,
-                  color: DesignTokens.textPrimary,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: DesignTokens.spacingSmall),
-
           // ── General benefits (always shown) ──
           for (final benefit in info.generalBenefits)
             _BenefitRow(text: benefit),
@@ -64,7 +44,7 @@ class HealthBenefitsCard extends StatelessWidget {
             const Padding(
               padding:
                   EdgeInsets.symmetric(vertical: DesignTokens.spacingSmall),
-              child: Divider(color: DesignTokens.border, height: 1),
+              child: Divider(height: 1),
             ),
             for (final benefit in ripenessInfo.healthBenefits)
               _BenefitRow(text: benefit),
@@ -84,27 +64,23 @@ class _BenefitRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: DesignTokens.spacingExtraSmall),
+      padding: const EdgeInsets.only(bottom: DesignTokens.spacingSmall),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Padding(
-            padding: EdgeInsets.only(top: 2),
+            padding: EdgeInsets.only(top: 3),
             child: Icon(
               Icons.eco_rounded,
-              color: DesignTokens.primary,
-              size: DesignTokens.pillTextSize,
+              color: DesignTokens.secondary,
+              size: DesignTokens.iconSmall,
             ),
           ),
           const SizedBox(width: DesignTokens.spacingSmall),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                fontSize: DesignTokens.chipTextSize,
-                fontWeight: FontWeight.w500,
-                color: DesignTokens.textSecondary,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
         ],

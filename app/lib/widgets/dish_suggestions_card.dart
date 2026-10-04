@@ -17,59 +17,36 @@ class DishSuggestionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SectionContainer(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      title: 'Suggested Dishes',
+      icon: Icons.restaurant_rounded,
+      iconColor: DesignTokens.warning,
+      child: Wrap(
+        spacing: DesignTokens.spacingSmall,
+        runSpacing: DesignTokens.spacingSmall,
         children: [
-          // ── Section header ──
-          const Row(
-            children: [
-              Icon(
-                Icons.restaurant_rounded,
-                color: DesignTokens.accent,
-                size: DesignTokens.iconDefault,
+          for (final dish in ripenessInfo.dishSuggestions)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: DesignTokens.chipPaddingHorizontal + 2,
+                vertical: DesignTokens.chipPaddingVertical + 2,
               ),
-              SizedBox(width: DesignTokens.spacingSmall),
-              Text(
-                'Suggested Dishes',
-                style: TextStyle(
-                  fontSize: DesignTokens.subheadingTextSize,
-                  fontWeight: FontWeight.w700,
+              decoration: BoxDecoration(
+                color: DesignTokens.surface,
+                borderRadius: BorderRadius.circular(DesignTokens.radiusPill),
+                border: Border.all(
+                  color: DesignTokens.border,
+                  width: DesignTokens.sectionBorderWidth,
+                ),
+              ),
+              child: Text(
+                dish,
+                style: const TextStyle(
                   color: DesignTokens.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: DesignTokens.chipTextSize,
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: DesignTokens.spacingSmall),
-
-          // ── Dish chips ──
-          Wrap(
-            spacing: DesignTokens.spacingSmall,
-            runSpacing: DesignTokens.spacingSmall,
-            children: [
-              for (final dish in ripenessInfo.dishSuggestions)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: DesignTokens.chipPaddingHorizontal,
-                    vertical: DesignTokens.chipPaddingVertical,
-                  ),
-                  decoration: BoxDecoration(
-                    color: DesignTokens.primaryLight,
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                  ),
-                  child: Text(
-                    dish,
-                    style: const TextStyle(
-                      color: DesignTokens.primaryDark,
-                      fontWeight: FontWeight.w600,
-                      fontSize: DesignTokens.chipTextSize,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+            ),
         ],
       ),
     );

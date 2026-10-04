@@ -165,8 +165,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Saba — Ripe'), findsOneWidget);
-      expect(find.text('Lakatan — Unripe'), findsOneWidget);
+      expect(find.text('Saba'), findsOneWidget);
+
+      expect(find.text('Ripe'), findsWidgets);
+      expect(find.text('Lakatan'), findsOneWidget);
+      expect(find.text('Unripe'), findsWidgets);
     });
 
     testWidgets('shows ripeness pill on each card', (tester) async {
@@ -227,7 +230,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Saba — Ripe'), findsOneWidget);
+      expect(find.text('Saba'), findsOneWidget);
+
+      expect(find.text('Ripe'), findsWidgets);
 
       await tester.tap(find.byIcon(Icons.delete_outline_rounded));
       await tester.pumpAndSettle();
@@ -272,7 +277,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Record still visible.
-      expect(find.text('Saba — Ripe'), findsOneWidget);
+      expect(find.text('Saba'), findsOneWidget);
+      expect(find.text('Ripe'), findsWidgets);
     });
 
     testWidgets('confirming dialog clears all records', (tester) async {
