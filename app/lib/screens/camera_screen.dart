@@ -2,10 +2,13 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../services/frame_quality.dart';
+import '../services/inference_service.dart';
+import '../services/reticle_crop.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/camera_controls.dart';
 import '../widgets/empty_state.dart';
@@ -110,6 +113,10 @@ class _CameraScreenState extends State<CameraScreen>
   final _conditionTracker = ScanConditionTracker();
   ScanCondition _condition = ScanCondition.searching;
   DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Measures the preview box so a capture can be cropped to the reticle the
+  /// user actually framed their banana in.
+  final _previewKey = GlobalKey();
 
   /// Torch (continuous flash) state. Reset whenever the camera restarts.
   bool _torchOn = false;
@@ -290,8 +297,16 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (!mounted) return;
 
+      // The overlay dims everything outside the reticle, so the user frames the
+      // banana inside it. Send the model that same region: the full frame is
+      // mostly background, and the classifier is trained on a banana that fills
+      // the picture — it reads a distant banana on a busy desk as NotBanana.
+      final scanFile = await _cropToReticle(capturedFile) ?? capturedFile;
+
+      if (!mounted) return;
+
       // Hand off to the scan callback — result screen appears per §7.1.
-      widget.onScan(capturedFile);
+      widget.onScan(scanFile);
     } catch (e) {
       if (!mounted) return;
       // Plain-language error per §7.3.
@@ -308,6 +323,46 @@ class _CameraScreenState extends State<CameraScreen>
         // Resume hints for when the user comes back to this screen.
         if (_cameraController == controller) _startFrameAnalysis(controller);
       }
+    }
+  }
+
+  /// Crops [capturedFile] down to the part of the frame the scan reticle was
+  /// covering, writing the result beside the original.
+  ///
+  /// Returns `null` whenever the crop cannot be worked out — an unmeasured
+  /// preview, an undecodable photo, a reticle that maps to nothing, or a failed
+  /// write. The caller then falls back to the full photo, which is the old
+  /// behaviour: a worse scan, but never a broken one.
+  Future<File?> _cropToReticle(File capturedFile) async {
+    try {
+      final previewSize = _previewKey.currentContext?.size;
+      if (previewSize == null) return null;
+
+      final decoded = decodeUprightImage(await capturedFile.readAsBytes());
+      if (decoded == null) return null;
+
+      final crop = imageCropForReticle(
+        previewSize: previewSize,
+        reticle: ScanOverlay.frameFor(previewSize),
+        imageWidth: decoded.width,
+        imageHeight: decoded.height,
+      );
+      if (crop == null) return null;
+
+      final cropped = img.copyCrop(
+        decoded,
+        x: crop.left.round(),
+        y: crop.top.round(),
+        width: crop.width.round(),
+        height: crop.height.round(),
+      );
+
+      final target = File('${capturedFile.path}.scan.jpg');
+      await target.writeAsBytes(img.encodeJpg(cropped, quality: 95));
+      return target;
+    } catch (_) {
+      // Any failure here just means scanning the whole photo instead.
+      return null;
     }
   }
 
@@ -573,6 +628,7 @@ class _CameraScreenState extends State<CameraScreen>
 
     // Live preview with scan frame, live hint + optional shutter flash.
     return _LivePreview(
+      key: _previewKey,
       controller: controller,
       showShutterFlash: _showShutterFlash,
       overlay: ScanOverlay(
@@ -608,6 +664,7 @@ class _LivePreview extends StatelessWidget {
     required this.controller,
     required this.overlay,
     this.showShutterFlash = false,
+    super.key,
   });
 
   final CameraController controller;
