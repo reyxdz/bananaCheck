@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/app_exception.dart';
 import '../theme/design_tokens.dart';
+import 'empty_state.dart';
+import 'primary_button.dart';
 
 /// Reusable, full-screen-safe error display widget (A16).
 ///
@@ -43,96 +45,30 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.spacingLarge,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Error icon ──
-            Container(
-              width: 80,
-              height: 80,
-              decoration: const BoxDecoration(
-                color: DesignTokens.errorBackground,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                exception.icon,
-                color: DesignTokens.confidenceLow,
-                size: DesignTokens.iconLarge,
-              ),
-            ),
-
-            const SizedBox(height: DesignTokens.spacingLarge),
-
-            // ── User message — plain language per §7.3 ──
-            Text(
-              exception.userMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: DesignTokens.headingTextSize,
-                fontWeight: FontWeight.w700,
-                color: DesignTokens.textPrimary,
-              ),
-            ),
-
-            const SizedBox(height: DesignTokens.spacingSmall),
-
-            // ── Actionable hint ──
-            Text(
-              exception.actionHint,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: DesignTokens.bodyTextSize,
-                color: DesignTokens.textSecondary,
-              ),
-            ),
-
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-
-            // ── Large retry button — single primary action per §7.1 / §7.4 ──
-            SizedBox(
-              width: double.infinity,
-              height: DesignTokens.primaryActionSize,
-              child: ElevatedButton.icon(
-                onPressed: onRetry,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: DesignTokens.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusMedium),
-                  ),
-                  textStyle: const TextStyle(
-                    fontSize: DesignTokens.bodyTextSize,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text(retryLabel),
-              ),
-            ),
-
-            // ── Optional secondary action ──
-            if (secondaryLabel != null && onSecondary != null) ...[
-              const SizedBox(height: DesignTokens.spacingMedium),
-              TextButton(
-                onPressed: onSecondary,
-                child: Text(
-                  secondaryLabel!,
-                  style: const TextStyle(
-                    fontSize: DesignTokens.bodyTextSize,
-                    color: DesignTokens.textSecondary,
-                  ),
-                ),
-              ),
-            ],
-          ],
+    return EmptyState(
+      icon: exception.icon,
+      iconColor: DesignTokens.error,
+      iconBackground: DesignTokens.errorBackground,
+      title: exception.userMessage,
+      message: exception.actionHint,
+      // Large retry button — single primary action per §7.1 / §7.4.
+      primaryAction: SizedBox(
+        height: DesignTokens.primaryActionSize,
+        child: PrimaryButton(
+          icon: Icons.refresh_rounded,
+          label: retryLabel,
+          onPressed: onRetry,
         ),
       ),
+      secondaryAction: secondaryLabel != null && onSecondary != null
+          ? TextButton(
+              onPressed: onSecondary,
+              style: TextButton.styleFrom(
+                foregroundColor: DesignTokens.textSecondary,
+              ),
+              child: Text(secondaryLabel!),
+            )
+          : null,
     );
   }
 }

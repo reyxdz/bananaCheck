@@ -13,6 +13,7 @@ from ml.split import (
     SplitResult,
     _collect_image_paths,
     _min_class_count,
+    source_group,
     split_dataset,
     split_dataset_to_dirs,
 )
@@ -32,8 +33,26 @@ def _create_test_image(
     return path
 
 
+def _scaffold_augmented_dataset(
+    tmp_path: Path, *, sources_per_class: int = 8, augs_per_source: int = 2
+) -> Path:
+    """Create a dataset where each source photo has augmented siblings.
+
+    Mirrors the real layout (``*_orig.jpg`` / ``*_aug0.jpg`` / ``*_Aug_123.jpg``)
+    so grouping behaviour can be tested.
+    """
+    for cls in ALL_CLASSES:
+        folder = tmp_path / cls.folder_name
+        folder.mkdir(parents=True, exist_ok=True)
+        for i in range(sources_per_class):
+            _create_test_image(folder / f"src_{i:03d}_orig.jpg")
+            for a in range(augs_per_source):
+                _create_test_image(folder / f"src_{i:03d}_aug{a}.jpg")
+    return tmp_path
+
+
 def _scaffold_dataset(tmp_path: Path, *, images_per_class: int = 0) -> Path:
-    """Create the 18-class folder structure with optional images."""
+    """Create the full class folder structure with optional images."""
     for cls in ALL_CLASSES:
         folder = tmp_path / cls.folder_name
         folder.mkdir(parents=True, exist_ok=True)
@@ -299,3 +318,83 @@ class TestSplitDatasetToDirs:
         assert len(dir_result.train) == len(path_result.train)
         assert len(dir_result.val) == len(path_result.val)
         assert len(dir_result.test) == len(path_result.test)
+
+
+# ---------------------------------------------------------------------------
+# Augmentation grouping (leak-free splits)
+# ---------------------------------------------------------------------------
+
+
+class TestSourceGroup:
+    def test_strips_capitalised_aug_suffix(self) -> None:
+        assert (
+            source_group(Path("Cavendish_Ripe_Bottom_0001_Aug_1693.jpg"))
+            == "Cavendish_Ripe_Bottom_0001"
+        )
+
+    def test_original_and_augmentations_share_one_group(self) -> None:
+        assert (
+            source_group(Path("nb_000_orig.jpg"))
+            == source_group(Path("nb_000_aug0.jpg"))
+            == source_group(Path("nb_000_aug1.jpg"))
+            == "nb_000"
+        )
+
+    def test_unaugmented_file_is_its_own_group(self) -> None:
+        assert source_group(Path("plain_photo.jpg")) == "plain_photo"
+
+    def test_distinct_sources_stay_distinct(self) -> None:
+        assert source_group(Path("nb_000_aug0.jpg")) != source_group(
+            Path("nb_001_aug0.jpg")
+        )
+
+
+class TestSplitIsLeakFree:
+    def test_no_source_photo_appears_in_two_subsets(self, tmp_path: Path) -> None:
+        """The whole point: augmented copies must not straddle the splits.
+
+        A source photo in both train and test means the model is scored on
+        images it effectively memorised, inflating reported accuracy.
+        """
+        data_dir = _scaffold_augmented_dataset(tmp_path)
+        result = split_dataset(data_dir)
+
+        groups = {
+            name: {(label, source_group(p)) for p, label in pairs}
+            for name, pairs in (
+                ("train", result.train),
+                ("val", result.val),
+                ("test", result.test),
+            )
+        }
+
+        assert not groups["train"] & groups["test"]
+        assert not groups["train"] & groups["val"]
+        assert not groups["val"] & groups["test"]
+
+    def test_every_class_is_present_in_every_subset(self, tmp_path: Path) -> None:
+        data_dir = _scaffold_augmented_dataset(tmp_path)
+        result = split_dataset(data_dir)
+
+        for pairs in (result.train, result.val, result.test):
+            assert len({label for _, label in pairs}) == NUM_CLASSES
+
+    def test_all_images_are_accounted_for(self, tmp_path: Path) -> None:
+        data_dir = _scaffold_augmented_dataset(tmp_path)
+        result = split_dataset(data_dir)
+
+        total = len(result.train) + len(result.val) + len(result.test)
+        assert total == NUM_CLASSES * 8 * 3
+
+    def test_split_is_deterministic_for_a_given_seed(self, tmp_path: Path) -> None:
+        data_dir = _scaffold_augmented_dataset(tmp_path)
+        first = split_dataset(data_dir, config=SplitConfig(seed=7))
+        second = split_dataset(data_dir, config=SplitConfig(seed=7))
+        assert first.test == second.test
+
+    def test_rejects_a_class_with_too_few_source_photos(self, tmp_path: Path) -> None:
+        """Many augmentations of two photos cannot make a valid split."""
+        data_dir = _scaffold_augmented_dataset(tmp_path, sources_per_class=2, augs_per_source=9)
+
+        with pytest.raises(ValueError, match="distinct source photos"):
+            split_dataset(data_dir)

@@ -2,49 +2,49 @@ import 'package:flutter/material.dart';
 
 import '../theme/design_tokens.dart';
 
-/// Small pill-shaped tag displaying an icon + label.
+/// Rounded status badge: icon + label, so meaning never relies on colour
+/// alone (§7.4). Used for variety and ripeness on results and history.
 ///
-/// Used for variety and ripeness badges across the result card and history
-/// cards. Supports two visual modes:
-/// - **Filled** (default): light background tint, no border.
-/// - **Outlined** (`outlined: true`): transparent-ish background with a
-///   visible border — used for the ripeness pill whose color is dynamic.
-///
-/// All sizing comes from [DesignTokens] (§7.5).
+/// * Filled (default): pale leaf background, botanical green text.
+/// * [outlined]: tinted with [color] plus a thin border — used for ripeness,
+///   whose colour changes per result.
 class InfoPill extends StatelessWidget {
   const InfoPill({
     required this.icon,
     required this.label,
     required this.color,
     this.outlined = false,
+    this.compact = false,
     super.key,
   });
 
-  /// Leading icon shown before the label.
   final IconData icon;
-
-  /// Human-readable label text.
   final String label;
-
-  /// The colour used for icon, text, and background tint.
   final Color color;
-
-  /// When `true`, renders a border + translucent fill instead of a solid fill.
   final bool outlined;
+
+  /// Smaller padding for dense lists (history rows).
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final foreground = outlined ? color : DesignTokens.primaryDark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: DesignTokens.chipPaddingHorizontal,
-        vertical: DesignTokens.chipPaddingVertical,
+      padding: EdgeInsets.symmetric(
+        horizontal: compact
+            ? DesignTokens.badgePaddingHorizontal
+            : DesignTokens.chipPaddingHorizontal,
+        vertical: compact
+            ? DesignTokens.badgePaddingVertical + 1
+            : DesignTokens.chipPaddingVertical,
       ),
       decoration: BoxDecoration(
-        color: outlined ? color.withOpacity(0.12) : DesignTokens.primaryLight,
-        borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
+        color: outlined ? color.withOpacity(0.10) : DesignTokens.primaryLight,
+        borderRadius: BorderRadius.circular(DesignTokens.radiusPill),
         border: outlined
             ? Border.all(
-                color: color.withOpacity(0.4),
+                color: color.withOpacity(0.35),
                 width: DesignTokens.sectionBorderWidth,
               )
             : null,
@@ -52,18 +52,19 @@ class InfoPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: outlined ? color : DesignTokens.primaryDark,
-            size: DesignTokens.iconSmall,
-          ),
-          const SizedBox(width: DesignTokens.spacingExtraSmall + 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: outlined ? color : DesignTokens.primaryDark,
-              fontWeight: FontWeight.w700,
-              fontSize: DesignTokens.pillTextSize,
+          Icon(icon, color: foreground, size: DesignTokens.iconSmall),
+          const SizedBox(width: DesignTokens.pillIconGap),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+                fontSize: compact
+                    ? DesignTokens.captionTextSize
+                    : DesignTokens.pillTextSize,
+              ),
             ),
           ),
         ],

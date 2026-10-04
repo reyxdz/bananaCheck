@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../theme/design_tokens.dart';
 
-/// The one main action on a screen: filled botanical green, icon + label
-/// (§7.2), at least 48dp tall (§7.4). Styling comes from the app theme.
-class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({
+/// A supporting action that sits beside or below a [PrimaryButton]:
+/// outlined, same height and shape, never competing for attention.
+/// Always icon + label (§7.2), at least 48dp tall (§7.4).
+class SecondaryButton extends StatelessWidget {
+  const SecondaryButton({
     required this.icon,
     required this.label,
     required this.onPressed,
@@ -22,9 +23,9 @@ class PrimaryButton extends StatelessWidget {
       constraints: const BoxConstraints(
         minHeight: DesignTokens.minimumTouchTarget,
       ),
-      child: FilledButton.icon(
+      child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon),
+        icon: Icon(icon, size: DesignTokens.iconAppBar),
         label: Text(label),
       ),
     );

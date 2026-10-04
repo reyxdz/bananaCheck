@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:banana_classifier/models/app_exception.dart';
@@ -31,6 +32,23 @@ class _FailingInferenceService implements InferenceService {
   Future<ClassificationResult> classify(File imageFile) async {
     throw Exception('Model failed');
   }
+}
+
+class _DelayedInferenceService implements InferenceService {
+  _DelayedInferenceService({required this.result, required this.delay});
+
+  final ClassificationResult result;
+  final Duration delay;
+
+  @override
+  Future<ClassificationResult> classify(File imageFile) =>
+      Future<ClassificationResult>.delayed(delay, () => result);
+}
+
+class _NeverEndingInferenceService implements InferenceService {
+  @override
+  Future<ClassificationResult> classify(File imageFile) =>
+      Completer<ClassificationResult>().future;
 }
 
 class _FakeStorageService implements StorageService {
@@ -76,6 +94,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -92,14 +111,14 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('shows a CircularProgressIndicator while classifying',
-        (tester) async {
+    testWidgets('shows a progress indicator while classifying', (tester) async {
       final inferenceService = _InstantInferenceService(result: defaultResult);
       final storageService = _FakeStorageService();
 
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -108,7 +127,10 @@ void main() {
         ),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is ProgressIndicator),
+        findsOneWidget,
+      );
 
       // Let microtasks settle.
       await tester.pump();
@@ -125,6 +147,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -152,6 +175,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -175,6 +199,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -208,6 +233,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -236,6 +262,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
             inferenceService: inferenceService,
             storageService: storageService,
             capturedFile: File('test/fixtures/fake_image.jpg'),
@@ -258,6 +285,206 @@ void main() {
       expect(find.text('Try Again'), findsOneWidget);
       // Storage should NOT have been called.
       expect(storageService.saveCallCount, 0);
+    });
+
+    testWidgets('shows the same error when the photo is not a banana',
+        (tester) async {
+      // The rejection class can win with high confidence — the model is sure
+      // it is looking at something that is not a banana. Confidence alone
+      // would wave it through.
+      final notBanana = ClassificationResult(
+        variety: ClassificationResult.notBananaVariety,
+        ripeness: '',
+        confidence: 0.97,
+      );
+      final storageService = _FakeStorageService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
+            inferenceService: _InstantInferenceService(result: notBanana),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text(const LowConfidenceException().userMessage),
+        findsOneWidget,
+      );
+      expect(find.text('Try Again'), findsOneWidget);
+      // A non-banana must never reach History.
+      expect(storageService.saveCallCount, 0);
+    });
+
+    testWidgets('shows low-confidence error when the top two classes are close',
+        (tester) async {
+      final torn = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.55,
+        margin: 0.04, // runner-up at 0.51 — effectively a coin toss
+      );
+      final storageService = _FakeStorageService();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
+            inferenceService: _InstantInferenceService(result: torn),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (_, __) {},
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text(const LowConfidenceException().userMessage),
+        findsOneWidget,
+      );
+      expect(storageService.saveCallCount, 0);
+    });
+
+    testWidgets('a confident banana with a clear margin still shows results',
+        (tester) async {
+      final good = ClassificationResult(
+        variety: 'Lakatan',
+        ripeness: 'Ripe',
+        confidence: 0.91,
+        margin: 0.80,
+      );
+      final storageService = _FakeStorageService();
+      ClassificationResult? delivered;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AnalyzingScreen(
+            minimumDisplayDuration: Duration.zero,
+            inferenceService: _InstantInferenceService(result: good),
+            storageService: storageService,
+            capturedFile: File('test/fixtures/fake_image.jpg'),
+            onComplete: (result, __) => delivered = result,
+          ),
+        ),
+      );
+
+      // One pump lets the classify + save microtasks complete; the screen's
+      // spinner animates forever, so pumpAndSettle would never return.
+      await tester.pump();
+
+      expect(
+          find.text(const LowConfidenceException().userMessage), findsNothing);
+      expect(delivered?.variety, 'Lakatan');
+      expect(storageService.saveCallCount, 1);
+    });
+
+    testWidgets('scanning sweep is off when the OS asks to reduce motion',
+        (tester) async {
+      Future<void> pumpWith({required bool reduceMotion}) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(disableAnimations: reduceMotion),
+              child: AnalyzingScreen(
+                minimumDisplayDuration: Duration.zero,
+                inferenceService: _NeverEndingInferenceService(),
+                storageService: _FakeStorageService(),
+                capturedFile: File('nonexistent.jpg'),
+                onComplete: (_, __) {},
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+      }
+
+      await pumpWith(reduceMotion: false);
+      expect(find.byType(AnimatedBuilder), findsWidgets);
+      final withMotion = find.byType(AnimatedBuilder).evaluate().length;
+
+      await pumpWith(reduceMotion: true);
+      expect(
+        find.byType(AnimatedBuilder).evaluate().length,
+        lessThan(withMotion),
+      );
+      // The status copy and progress indicator are still there.
+      expect(find.text('Analyzing your banana…'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((w) => w is ProgressIndicator),
+        findsOneWidget,
+      );
+    });
+
+    group('minimum display time', () {
+      Future<List<ClassificationResult>> pumpScreen(
+        WidgetTester tester,
+        InferenceService service,
+      ) async {
+        final completed = <ClassificationResult>[];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: AnalyzingScreen(
+              inferenceService: service,
+              storageService: _FakeStorageService(),
+              capturedFile: File('nonexistent.jpg'),
+              onComplete: (result, _) => completed.add(result),
+            ),
+          ),
+        );
+        return completed;
+      }
+
+      testWidgets('a fast scan stays on screen for the minimum time',
+          (tester) async {
+        final completed = await pumpScreen(
+          tester,
+          _InstantInferenceService(result: defaultResult),
+        );
+
+        await tester.pump(const Duration(milliseconds: 1000));
+        expect(completed, isEmpty);
+        expect(find.text('Analyzing your banana…'), findsOneWidget);
+
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(completed, hasLength(1));
+      });
+
+      testWidgets('a slow scan is not slowed down further', (tester) async {
+        final completed = await pumpScreen(
+          tester,
+          _DelayedInferenceService(
+            result: defaultResult,
+            delay: const Duration(milliseconds: 2500),
+          ),
+        );
+
+        await tester.pump(const Duration(milliseconds: 2400));
+        expect(completed, isEmpty);
+        await tester.pump(const Duration(milliseconds: 200));
+        // Done at ~2.5s — not 2.5s + 1.5s.
+        expect(completed, hasLength(1));
+      });
+
+      testWidgets('an error also waits for the minimum time', (tester) async {
+        await pumpScreen(
+          tester,
+          _FailingInferenceService(),
+        );
+
+        await tester.pump(const Duration(milliseconds: 1000));
+        expect(find.text('Try Again'), findsNothing);
+
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('Try Again'), findsOneWidget);
+      });
     });
   });
 }

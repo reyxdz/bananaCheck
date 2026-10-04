@@ -6,6 +6,10 @@ import '../models/scan_record.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
 import '../theme/ripeness_helpers.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/info_pill.dart';
+import '../widgets/primary_button.dart';
+import '../widgets/screen_header.dart';
 import 'results_screen.dart';
 
 /// Screen displaying past banana scan records saved in local storage.
@@ -87,7 +91,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: DesignTokens.confidenceLow,
+              backgroundColor: DesignTokens.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Clear All'),
@@ -105,128 +109,97 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scan History'),
-        actions: [
-          if (_records.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Clear All',
-              onPressed: _clearAll,
+      body: SafeArea(
+        child: Column(
+          children: [
+            ScreenHeader(
+              title: 'Scan History',
+              onBack: () => Navigator.of(context).maybePop(),
+              actions: [
+                if (_records.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    tooltip: 'Clear All',
+                    onPressed: _clearAll,
+                  ),
+              ],
             ),
-        ],
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _hasError
+                      ? _buildErrorState(context)
+                      : _records.isEmpty
+                          ? _buildEmptyState(context)
+                          : _buildRecordList(context),
+            ),
+          ],
+        ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: DesignTokens.primary),
-            )
-          : _hasError
-              ? _buildErrorState(context)
-              : _records.isEmpty
-                  ? _buildEmptyState(context)
-                  : _buildRecordList(context),
     );
   }
 
   Widget _buildErrorState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(DesignTokens.spacingLarge),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline_rounded,
-              size: DesignTokens.iconEmptyState,
-              color: DesignTokens.confidenceLow,
-            ),
-            const SizedBox(height: DesignTokens.spacingLarge),
-            Text(
-              'Something went wrong',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: DesignTokens.textPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: DesignTokens.spacingSmall),
-            const Text(
-              'We could not load your scan history. Please try again.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: DesignTokens.bodyTextSize,
-                color: DesignTokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-            FilledButton.icon(
-              onPressed: _loadHistory,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
-            ),
-          ],
-        ),
+    return EmptyState(
+      icon: Icons.error_outline_rounded,
+      iconColor: DesignTokens.error,
+      iconBackground: DesignTokens.errorBackground,
+      title: 'Something went wrong',
+      message: 'We could not load your scan history. Please try again.',
+      primaryAction: PrimaryButton(
+        icon: Icons.refresh_rounded,
+        label: 'Try Again',
+        onPressed: _loadHistory,
       ),
     );
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(DesignTokens.spacingLarge),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: DesignTokens.logoMedium * 1.5,
-                height: DesignTokens.logoMedium * 1.5,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.history_toggle_off_rounded,
-                  size: DesignTokens.iconEmptyState,
-                  color: DesignTokens.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(height: DesignTokens.spacingLarge),
-            Text(
-              'No Saved Scans Yet',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: DesignTokens.textPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: DesignTokens.spacingSmall),
-            const Text(
-              'Your past banana classification results will be saved here so you can review them anytime.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: DesignTokens.bodyTextSize,
-                color: DesignTokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.camera_alt_rounded),
-              label: const Text('Scan a Banana Now'),
-            ),
-          ],
-        ),
+    return EmptyState(
+      icon: Icons.history_rounded,
+      title: 'No Saved Scans Yet',
+      message: 'Your past banana classification results will be saved here '
+          'so you can review them anytime.',
+      primaryAction: PrimaryButton(
+        icon: Icons.camera_alt_rounded,
+        label: 'Scan a Banana Now',
+        onPressed: () => Navigator.of(context).pop(),
       ),
     );
   }
 
   Widget _buildRecordList(BuildContext context) {
+    final count = _records.length;
+
     return ListView.separated(
-      padding: const EdgeInsets.all(DesignTokens.spacingLarge),
-      itemCount: _records.length,
-      separatorBuilder: (_, __) =>
-          const SizedBox(height: DesignTokens.spacingMedium),
+      padding: const EdgeInsets.fromLTRB(
+        DesignTokens.spacingMedium,
+        DesignTokens.spacingSmall,
+        DesignTokens.spacingMedium,
+        DesignTokens.spacingLarge,
+      ),
+      // Header row + one row per record.
+      itemCount: count + 1,
+      separatorBuilder: (_, index) => SizedBox(
+        height: index == 0
+            ? DesignTokens.spacingSmall
+            : DesignTokens.spacingSmall + 4,
+      ),
       itemBuilder: (context, index) {
-        final record = _records[index];
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: DesignTokens.spacingExtraSmall,
+            ),
+            child: Text(
+              count == 1
+                  ? '1 saved scan · newest first'
+                  : '$count saved scans · newest first',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          );
+        }
+        final record = _records[index - 1];
         return _HistoryCard(
           record: record,
           onTap: () {
@@ -286,26 +259,26 @@ class _HistoryCard extends StatelessWidget {
     final color = RipenessHelpers.colorFor(record.result.ripeness);
 
     return Card(
-      elevation: 2,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
         child: Padding(
-          padding: const EdgeInsets.all(DesignTokens.spacingMedium),
+          padding: const EdgeInsets.all(DesignTokens.spacingSmall + 4),
           child: Row(
             children: [
-              // Image thumbnail or icon
+              // Photo thumbnail, or a leaf if the file is gone.
               ClipRRect(
                 borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
                 child: SizedBox(
-                  width: 64,
-                  height: 64,
+                  width: DesignTokens.historyThumbnailSize,
+                  height: DesignTokens.historyThumbnailSize,
                   child: Image.file(
                     File(record.imagePath),
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    excludeFromSemantics: true,
+                    errorBuilder: (_, __, ___) => const ColoredBox(
                       color: DesignTokens.primaryLight,
-                      child: const Icon(
+                      child: Icon(
                         Icons.eco,
                         color: DesignTokens.primary,
                         size: DesignTokens.iconHistoryFallback,
@@ -316,69 +289,35 @@ class _HistoryCard extends StatelessWidget {
               ),
               const SizedBox(width: DesignTokens.spacingMedium),
 
-              // Title & Info
+              // Title, ripeness badge, date.
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '${record.result.variety} — ${record.result.ripeness}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: DesignTokens.bodyTextSize,
-                              color: DesignTokens.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      record.result.variety,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    const SizedBox(height: DesignTokens.spacingExtraSmall),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: DesignTokens.badgePaddingHorizontal,
-                          vertical: DesignTokens.badgePaddingVertical),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.12),
-                        borderRadius:
-                            BorderRadius.circular(DesignTokens.badgeRadius),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            RipenessHelpers.iconFor(record.result.ripeness),
-                            color: color,
-                            size: DesignTokens.captionTextSize + 2,
-                          ),
-                          const SizedBox(width: DesignTokens.spacingExtraSmall),
-                          Text(
-                            record.result.ripeness,
-                            style: TextStyle(
-                              color: color,
-                              fontWeight: FontWeight.w700,
-                              fontSize: DesignTokens.captionTextSize,
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: DesignTokens.spacingExtraSmall + 2),
+                    InfoPill(
+                      icon: RipenessHelpers.iconFor(record.result.ripeness),
+                      label: record.result.ripeness,
+                      color: color,
+                      outlined: true,
+                      compact: true,
                     ),
-                    const SizedBox(height: DesignTokens.chipPaddingVertical),
+                    const SizedBox(height: DesignTokens.spacingExtraSmall + 2),
                     Text(
                       _formatDate(record.scannedAt),
-                      style: const TextStyle(
-                        fontSize: DesignTokens.captionTextSize,
-                        color: DesignTokens.textSecondary,
-                      ),
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
               ),
 
-              // Delete button
+              // Delete button (48dp target from the theme).
               IconButton(
                 icon: const Icon(
                   Icons.delete_outline_rounded,

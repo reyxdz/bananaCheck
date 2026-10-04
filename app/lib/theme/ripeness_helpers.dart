@@ -36,4 +36,19 @@ abstract final class RipenessHelpers {
         return Icons.eco_rounded;
     }
   }
+
+  /// One short, plain-language line describing what [ripeness] means for
+  /// the user (§7.3). Empty for unknown values, so callers can hide it.
+  static String summaryFor(String ripeness) {
+    switch (ripeness.toLowerCase()) {
+      case 'unripe':
+        return 'Still green — give it a few days';
+      case 'ripe':
+        return 'Ready to eat today';
+      case 'overripe':
+        return 'Very soft — best for cooking and baking';
+      default:
+        return '';
+    }
+  }
 }

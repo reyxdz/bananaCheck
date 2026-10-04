@@ -1,7 +1,9 @@
 """Banana variety and ripeness-stage taxonomy — single source of truth for
 the ML pipeline.
 
-All 18 class labels (6 varieties × 3 ripeness stages) are defined here.
+All 19 class labels are defined here: 18 banana classes (6 varieties × 3
+ripeness stages) plus the ``NotBanana`` rejection class, which lets the model
+say "this photo is not a banana" instead of being forced to name a variety.
 Everything else in the codebase — dataset layout, model output indexing, and
 the ``labels.txt`` file bundled with the Flutter app — derives from this
 module so the two never drift apart.
@@ -38,19 +40,51 @@ class RipenessStage(StrEnum):
 
 
 # ---------------------------------------------------------------------------
+# Rejection class
+# ---------------------------------------------------------------------------
+#
+# Without this class the model is a closed set: softmax always sums to 1 over
+# the 18 banana classes, so a photo of a road, a desk or a person is forced
+# into some variety, often with high confidence.  ``NotBanana`` gives that
+# probability mass somewhere honest to go.
+#
+# The label has no underscore on purpose — the Dart decoder splits a label on
+# its first ``_`` to recover variety and ripeness, so ``Not_Banana`` would be
+# read as variety "Not", ripeness "Banana".
+
+NOT_BANANA_LABEL: str = "NotBanana"
+
+
+# ---------------------------------------------------------------------------
 # Combined class representation
 # ---------------------------------------------------------------------------
 
 
 class BananaClass(NamedTuple):
-    """A single classification target: one variety at one ripeness stage."""
+    """A single classification target.
 
-    variety: BananaVariety
-    ripeness: RipenessStage
+    Either one variety at one ripeness stage (``Lakatan_Ripe``), or the
+    rejection class, which has a plain variety label and no ripeness.
+    """
+
+    variety: BananaVariety | str
+    ripeness: RipenessStage | None
+
+    @property
+    def is_banana(self) -> bool:
+        """Whether this class names a banana at all (vs. ``NotBanana``)."""
+        return self.ripeness is not None
+
+    @property
+    def ripeness_name(self) -> str:
+        """Ripeness as a string — empty for the rejection class."""
+        return "" if self.ripeness is None else str(self.ripeness)
 
     @property
     def folder_name(self) -> str:
-        """Dataset directory name, e.g. ``"Lakatan_Ripe"``."""
+        """Dataset directory name, e.g. ``"Lakatan_Ripe"`` or ``"NotBanana"``."""
+        if self.ripeness is None:
+            return str(self.variety)
         return f"{self.variety}_{self.ripeness}"
 
     def __str__(self) -> str:
@@ -74,16 +108,21 @@ class BananaClass(NamedTuple):
 # Do NOT reorder (e.g. to a semantic Unripe → Ripe → Overripe sequence) without
 # retraining the model — doing so silently mislabels every prediction.
 
+NOT_BANANA: BananaClass = BananaClass(NOT_BANANA_LABEL, None)
+
 ALL_CLASSES: list[BananaClass] = sorted(
     (
-        BananaClass(variety, ripeness)
-        for variety in BananaVariety
-        for ripeness in RipenessStage
+        *(
+            BananaClass(variety, ripeness)
+            for variety in BananaVariety
+            for ripeness in RipenessStage
+        ),
+        NOT_BANANA,
     ),
     key=lambda banana_class: banana_class.folder_name,
 )
 
-NUM_CLASSES: int = len(ALL_CLASSES)  # 18
+NUM_CLASSES: int = len(ALL_CLASSES)  # 19 = 18 banana classes + NotBanana
 
 
 # ---------------------------------------------------------------------------

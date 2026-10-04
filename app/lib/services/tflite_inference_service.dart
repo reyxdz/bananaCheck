@@ -28,7 +28,7 @@ import 'inference_service.dart';
 /// Construct via [TFLiteInferenceService.create] in production; the primary
 /// constructor takes an already-loaded [Interpreter] and labels so the
 /// classification logic can be unit-tested without native assets.
-class TFLiteInferenceService implements InferenceService {
+class TFLiteInferenceService implements InferenceService, RegionClassifier {
   TFLiteInferenceService({
     required Interpreter interpreter,
     required List<String> labels,
@@ -93,21 +93,26 @@ class TFLiteInferenceService implements InferenceService {
         throw const ImageProcessingException();
       }
 
-      final input = imageToInput(decoded, _inputSize);
-      final output = <List<double>>[List<double>.filled(_labels.length, 0)];
-      _interpreter.run(input, output);
-
-      if (kDebugMode) {
-        debugPrint('\u{1F34C} ${describeTopScores(output.first, _labels)}');
-      }
-
-      return decodeProbabilities(output.first, _labels);
+      return classifyRegion(decoded);
     } on AppException {
       rethrow;
     } catch (_) {
       // Any decode/inference failure surfaces as a plain-language image error.
       throw const ImageProcessingException();
     }
+  }
+
+  @override
+  ClassificationResult classifyRegion(img.Image region) {
+    final input = imageToInput(region, _inputSize);
+    final output = <List<double>>[List<double>.filled(_labels.length, 0)];
+    _interpreter.run(input, output);
+
+    if (kDebugMode) {
+      debugPrint('\u{1F34C} ${describeTopScores(output.first, _labels)}');
+    }
+
+    return decodeProbabilities(output.first, _labels);
   }
 
   /// Release native interpreter resources. Call when the service is disposed.
@@ -177,8 +182,9 @@ class TFLiteInferenceService implements InferenceService {
 
   /// Decode a probability vector into a [ClassificationResult].
   ///
-  /// Picks the highest-probability class (confidence = that probability) and
-  /// splits its label into variety and ripeness. Labels may use either the
+  /// Picks the highest-probability class (confidence = that probability),
+  /// records the gap to the runner-up as the margin, and splits the winning
+  /// label into variety and ripeness. Labels may use either the
   /// `Variety_Ripeness` (shipped `labels.txt`) or `Variety|Ripeness` format.
   @visibleForTesting
   static ClassificationResult decodeProbabilities(
@@ -193,10 +199,17 @@ class TFLiteInferenceService implements InferenceService {
     }
 
     var maxIndex = 0;
+    var runnerUp = double.negativeInfinity;
     for (var i = 1; i < probabilities.length; i++) {
       if (probabilities[i] > probabilities[maxIndex]) {
+        runnerUp = probabilities[maxIndex];
         maxIndex = i;
+      } else if (probabilities[i] > runnerUp) {
+        runnerUp = probabilities[i];
       }
+    }
+    if (runnerUp == double.negativeInfinity) {
+      runnerUp = 0;
     }
 
     final label = labels[maxIndex];
@@ -209,6 +222,7 @@ class TFLiteInferenceService implements InferenceService {
       variety: variety,
       ripeness: ripeness,
       confidence: probabilities[maxIndex].clamp(0.0, 1.0),
+      margin: (probabilities[maxIndex] - runnerUp).clamp(0.0, 1.0),
     );
   }
 }

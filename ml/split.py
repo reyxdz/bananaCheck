@@ -37,12 +37,13 @@ Directory-based (on-disk)::
 
 from __future__ import annotations
 
+import random
+import re
 import shutil
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
-
-from sklearn.model_selection import train_test_split
 
 from ml.classes import ALL_CLASSES, BananaClass
 from ml.preprocess import VALID_IMAGE_EXTENSIONS, require_directory, validate_dataset_structure
@@ -157,6 +158,78 @@ def _min_class_count(labels: list[int]) -> int:
 # ---------------------------------------------------------------------------
 
 
+
+# ---------------------------------------------------------------------------
+# Augmentation grouping
+# ---------------------------------------------------------------------------
+#
+# The dataset contains augmented variants alongside their source photo
+# (``Cavendish_Ripe_Bottom_0001_Aug_1693.jpg``, ``nb_000_aug0.jpg``).  Splitting
+# per file lets variants of one photo land in both train and test, which leaks
+# the test set: the model is scored on images it effectively memorised, and
+# reported accuracy comes out far higher than real-world performance.
+#
+# Every split below therefore moves whole *groups* — a source photo and all of
+# its augmentations travel together.
+
+_AUG_SUFFIX = re.compile(r"_(?:aug_?\d*|orig)$", re.IGNORECASE)
+
+
+def source_group(path: Path) -> str:
+    """Return the source-photo key *path* belongs to.
+
+    Augmented variants and their original collapse to one key, so a grouped
+    split can keep them on the same side.
+
+    >>> source_group(Path("Cavendish_Ripe_Bottom_0001_Aug_1693.jpg"))
+    'Cavendish_Ripe_Bottom_0001'
+    >>> source_group(Path("nb_000_aug0.jpg")) == source_group(Path("nb_000_orig.jpg"))
+    True
+    """
+    return _AUG_SUFFIX.sub("", path.stem)
+
+
+def _split_groups(
+    items: list[tuple[Path, int]],
+    cfg: SplitConfig,
+) -> tuple[list[tuple[Path, int]], list[tuple[Path, int]], list[tuple[Path, int]]]:
+    """Split *items* three ways without ever separating a source group.
+
+    Groups are split within each class, so the result stays stratified by
+    class while remaining leak-free across splits.
+    """
+    by_class: dict[int, dict[str, list[tuple[Path, int]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
+    for path, label in items:
+        by_class[label][source_group(path)].append((path, label))
+
+    train: list[tuple[Path, int]] = []
+    val: list[tuple[Path, int]] = []
+    test: list[tuple[Path, int]] = []
+
+    for label in sorted(by_class):
+        groups = sorted(by_class[label])
+        # Seed per class so adding one class cannot reshuffle the others.
+        random.Random(f"{cfg.seed}:{label}").shuffle(groups)
+
+        n = len(groups)
+        n_test = max(1, round(n * cfg.test_ratio))
+        n_val = max(1, round(n * cfg.val_ratio))
+        if n_test + n_val >= n:  # tiny class — keep at least one group to train on
+            n_test = n_val = 1
+
+        for bucket, chunk in (
+            (test, groups[:n_test]),
+            (val, groups[n_test : n_test + n_val]),
+            (train, groups[n_test + n_val :]),
+        ):
+            for group in chunk:
+                bucket.extend(by_class[label][group])
+
+    return train, val, test
+
+
 def split_dataset(
     data_dir: Path,
     *,
@@ -204,37 +277,28 @@ def split_dataset(
             f"stratified split, but the smallest class has only {min_count}."
         )
 
-    # First split: separate test set from the rest.
-    # test_ratio relative to the whole dataset.
-    paths_trainval, paths_test, labels_trainval, labels_test = train_test_split(
-        paths,
-        labels,
-        test_size=cfg.test_ratio,
-        random_state=cfg.seed,
-        stratify=labels,
+    min_groups = min(
+        len(
+            {
+                source_group(path)
+                for path, lbl in zip(paths, labels, strict=True)
+                if lbl == label
+            }
+        )
+        for label in set(labels)
+    )
+    if min_groups < 3:
+        raise ValueError(
+            f"Every class must have at least 3 distinct source photos (not just "
+            f"augmented copies) for a leak-free three-way split, but the "
+            f"smallest class has only {min_groups}."
+        )
+
+    train_pairs, val_pairs, test_pairs = _split_groups(
+        list(zip(paths, labels, strict=True)), cfg
     )
 
-    # Second split: separate validation set from the train+val remainder.
-    # val_ratio relative to (train + val) fraction.
-    val_relative = cfg.val_ratio / (cfg.train_ratio + cfg.val_ratio)
-    paths_train, paths_val, labels_train, labels_val = train_test_split(
-        paths_trainval,
-        labels_trainval,
-        test_size=val_relative,
-        random_state=cfg.seed,
-        stratify=labels_trainval,
-    )
-
-    def _zip_pairs(
-        ps: list[Path], ls: list[int]
-    ) -> list[tuple[Path, int]]:
-        return list(zip(ps, ls, strict=True))
-
-    return SplitResult(
-        train=_zip_pairs(paths_train, labels_train),
-        val=_zip_pairs(paths_val, labels_val),
-        test=_zip_pairs(paths_test, labels_test),
-    )
+    return SplitResult(train=train_pairs, val=val_pairs, test=test_pairs)
 
 
 # ---------------------------------------------------------------------------

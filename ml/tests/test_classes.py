@@ -9,6 +9,8 @@ import pytest
 
 from ml.classes import (
     ALL_CLASSES,
+    NOT_BANANA,
+    NOT_BANANA_LABEL,
     NUM_CLASSES,
     BananaClass,
     BananaVariety,
@@ -43,9 +45,10 @@ def test_all_three_ripeness_stages_are_defined() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_all_classes_has_exactly_18_entries() -> None:
-    assert len(ALL_CLASSES) == 18
-    assert NUM_CLASSES == 18
+def test_all_classes_has_exactly_19_entries() -> None:
+    """18 banana classes plus the NotBanana rejection class."""
+    assert len(ALL_CLASSES) == 19
+    assert NUM_CLASSES == 19
 
 
 def test_all_classes_contains_no_duplicates() -> None:
@@ -60,8 +63,21 @@ def test_all_classes_covers_every_variety_ripeness_combination() -> None:
         BananaClass(variety, ripeness)
         for variety in BananaVariety
         for ripeness in RipenessStage
-    }
+    } | {NOT_BANANA}
     assert set(ALL_CLASSES) == expected
+
+
+def test_not_banana_is_the_only_non_banana_class() -> None:
+    non_banana = [cls for cls in ALL_CLASSES if not cls.is_banana]
+    assert non_banana == [NOT_BANANA]
+    assert NOT_BANANA.folder_name == NOT_BANANA_LABEL
+    assert NOT_BANANA.ripeness_name == ""
+
+
+def test_not_banana_label_has_no_underscore() -> None:
+    """The Dart decoder splits a label on its first ``_`` to recover variety
+    and ripeness, so ``Not_Banana`` would be read as variety "Not"."""
+    assert "_" not in NOT_BANANA_LABEL
 
 
 def test_all_classes_is_alphabetical_by_folder_name() -> None:
@@ -92,8 +108,10 @@ def test_folder_name_produces_expected_slug() -> None:
     assert cls.folder_name == "Lakatan_Ripe"
 
 
-def test_folder_name_for_every_class_uses_underscore_separator() -> None:
+def test_folder_name_for_every_banana_class_uses_underscore_separator() -> None:
     for cls in ALL_CLASSES:
+        if not cls.is_banana:
+            continue
         assert "_" in cls.folder_name, f"No underscore in folder_name: {cls.folder_name}"
 
 
@@ -167,13 +185,13 @@ def test_ripeness_stage_str_equals_value() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_generate_labels_file_creates_file_with_18_lines(tmp_path: Path) -> None:
+def test_generate_labels_file_creates_file_with_19_lines(tmp_path: Path) -> None:
     output = tmp_path / "labels.txt"
     result = generate_labels_file(output)
 
     assert result.is_file()
     lines = result.read_text(encoding="utf-8").strip().splitlines()
-    assert len(lines) == 18
+    assert len(lines) == 19
 
 
 def test_generate_labels_file_lines_match_all_classes_order(tmp_path: Path) -> None:
