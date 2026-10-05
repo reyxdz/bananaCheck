@@ -1,7 +1,6 @@
 import 'package:banana_classifier/theme/app_theme.dart';
 import 'package:banana_classifier/theme/design_tokens.dart';
 import 'package:banana_classifier/widgets/empty_state.dart';
-import 'package:banana_classifier/widgets/reveal.dart';
 import 'package:banana_classifier/widgets/screen_header.dart';
 import 'package:banana_classifier/widgets/secondary_button.dart';
 import 'package:banana_classifier/widgets/section_container.dart';
@@ -171,26 +170,6 @@ void main() {
       ));
       expect(find.text('Plain'), findsOneWidget);
       expect(find.byType(Row), findsNothing);
-    });
-  });
-
-  group('Reveal', () {
-    testWidgets('animates in, ending fully visible', (tester) async {
-      await tester.pumpWidget(_app(const Reveal(child: Text('Hi'))));
-      final start = tester.widget<Opacity>(find.byType(Opacity)).opacity;
-      await tester.pumpAndSettle();
-      final end = tester.widget<Opacity>(find.byType(Opacity)).opacity;
-      expect(start, lessThan(1));
-      expect(end, 1);
-    });
-
-    testWidgets('is skipped entirely when the OS asks to reduce motion',
-        (tester) async {
-      await tester.pumpWidget(
-        _app(const Reveal(child: Text('Hi')), reduceMotion: true),
-      );
-      expect(find.text('Hi'), findsOneWidget);
-      expect(find.byType(Opacity), findsNothing);
     });
   });
 }

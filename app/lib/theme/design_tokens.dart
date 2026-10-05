@@ -47,6 +47,14 @@ abstract final class DesignTokens {
   static const Color ripenessUnripe = Color(0xFF3D7A3A); // Leaf green
   static const Color ripenessRipe = Color(0xFF8F5E0F); // Deep banana gold
   static const Color ripenessOverripe = Color(0xFF7A4E2D); // Brown
+
+  // Peel colours for the ripening scale on the results screen. Decorative
+  // fills only — the stage is always named in text beside them.
+  static const Color peelGreen = Color(0xFF7FA33A);
+  static const Color peelYellow = Color(0xFFEBC13A);
+  static const Color peelBrown = Color(0xFF8A5A2B);
+  static const double ripenessScaleHeight = 10;
+  static const double ripenessScaleActiveHeight = 16;
   static const Color confidenceHigh = success;
   static const Color confidenceMedium = warning;
   static const Color confidenceLow = error;
@@ -161,6 +169,7 @@ abstract final class DesignTokens {
   static const double headingTextSize = 24;
   static const double resultHeadlineSize = 30;
   static const double displayTextSize = 32;
+  static const double varietyHeadlineSize = 40;
 
   /// Line heights / tracking for the scale.
   static const double bodyLineHeight = 1.45;
