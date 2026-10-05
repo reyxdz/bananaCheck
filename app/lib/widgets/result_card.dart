@@ -10,7 +10,6 @@ import 'section_container.dart';
 import 'dish_suggestions_card.dart';
 import 'health_benefits_card.dart';
 import 'result_headline.dart';
-import 'reveal.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -78,38 +77,30 @@ class ResultCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Headline: variety large, ripeness badge + meaning ──
-                Reveal(
-                  child: ResultHeadline(
-                    variety: result.variety,
-                    ripeness: result.ripeness,
-                  ),
+                // ── Headline: variety large, ripeness word + ripening scale ──
+                ResultHeadline(
+                  variety: result.variety,
+                  ripeness: result.ripeness,
                 ),
 
                 const SizedBox(height: DesignTokens.spacingLarge),
 
                 // ── Plain-language confidence (§7.3) ──
-                Reveal(
-                  order: 2,
-                  child: SectionContainer(
-                    child: ConfidenceIndicator(confidence: result.confidence),
-                  ),
+                SectionContainer(
+                  child: ConfidenceIndicator(confidence: result.confidence),
                 ),
 
                 const SizedBox(height: DesignTokens.spacingSmall + 4),
 
                 // ── Farmer/vendor handling advice ──
-                Reveal(
-                  order: 3,
-                  child: SectionContainer(
-                    title: 'Handling tip',
-                    icon: Icons.tips_and_updates_outlined,
-                    iconColor: DesignTokens.warning,
-                    background: DesignTokens.accentLight,
-                    child: Text(
-                      _vendorRecommendation,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+                SectionContainer(
+                  title: 'Handling tip',
+                  icon: Icons.tips_and_updates_outlined,
+                  iconColor: DesignTokens.warning,
+                  background: DesignTokens.accentLight,
+                  child: Text(
+                    _vendorRecommendation,
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
 
@@ -137,16 +128,10 @@ class ResultCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: DesignTokens.spacingSmall + 4),
-        Reveal(
-          order: 4,
-          child: HealthBenefitsCard(info: info, ripeness: lowerRipeness),
-        ),
+        HealthBenefitsCard(info: info, ripeness: lowerRipeness),
         if (ripenessInfo != null) ...[
           const SizedBox(height: DesignTokens.spacingSmall + 4),
-          Reveal(
-            order: 5,
-            child: DishSuggestionsCard(ripenessInfo: ripenessInfo),
-          ),
+          DishSuggestionsCard(ripenessInfo: ripenessInfo),
         ],
       ],
     );
