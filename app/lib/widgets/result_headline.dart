@@ -130,6 +130,60 @@ class _Fact extends StatelessWidget {
                 ),
               ),
             ],
+
+            // ── Where it sits on the ripening scale ──
+            if (stage != null) ...[
+              const SizedBox(height: DesignTokens.spacingMedium),
+              RipeningScale(activeIndex: stage),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Three peel-coloured segments — Unripe, Ripe, Overripe — with the
+/// detected stage in full colour, taller, and labelled in bold. The active
+/// segment fills in once when it appears (skipped under reduce-motion).
+class RipeningScale extends StatelessWidget {
+  const RipeningScale({required this.activeIndex, super.key});
+
+  /// Index into [stages] of the detected ripeness.
+  final int activeIndex;
+
+  static const stages = ['Unripe', 'Ripe', 'Overripe'];
+  static const _colors = [
+    DesignTokens.peelGreen,
+    DesignTokens.peelYellow,
+    DesignTokens.peelBrown,
+  ];
+
+  /// Position of [ripeness] on the scale, or `null` if it isn't one of the
+  /// three known stages.
+  static int? stageIndexOf(String ripeness) {
+    final index = stages.indexWhere(
+      (s) => s.toLowerCase() == ripeness.trim().toLowerCase(),
+    );
+    return index < 0 ? null : index;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < stages.length; i++) ...[
+          if (i > 0) const SizedBox(width: DesignTokens.spacingExtraSmall + 2),
+          Expanded(
+            child: _Segment(
+              label: stages[i],
+              color: _colors[i],
+              active: i == activeIndex,
+              animate: !reduceMotion,
+            ),
           ),
         ),
       ],
