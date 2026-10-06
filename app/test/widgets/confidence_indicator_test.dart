@@ -50,7 +50,7 @@ void main() {
       await tester.pumpWidget(buildIndicator(0.42));
 
       expect(
-        find.text('Not very clear — try another photo'),
+        find.text('Not very clear. Try another photo'),
         findsOneWidget,
       );
       expect(find.byIcon(Icons.help_outline), findsOneWidget);
@@ -60,7 +60,7 @@ void main() {
       await tester.pumpWidget(buildIndicator(0.64));
 
       expect(
-        find.text('Not very clear — try another photo'),
+        find.text('Not very clear. Try another photo'),
         findsOneWidget,
       );
     });

@@ -248,7 +248,7 @@ class _WelcomePage extends StatelessWidget {
                         ),
                         SizedBox(height: DesignTokens.spacingMedium),
                         _Body(
-                          'Scan a banana to see its variety and ripeness — right on '
+                          'Scan a banana to see its variety and ripeness right on '
                           'your phone. No internet needed.',
                           color: DesignTokens.onboardingOnDarkMuted,
                         ),
@@ -410,7 +410,7 @@ class _ReadyPage extends StatelessWidget {
         _Headline('Smarter farming starts with a scan.'),
         SizedBox(height: DesignTokens.spacingSmall),
         _Body(
-          'Know the variety and ripeness of your bananas — anytime, '
+          'Know the variety and ripeness of your bananas anytime, '
           'anywhere.',
         ),
         SizedBox(height: DesignTokens.spacingMedium),

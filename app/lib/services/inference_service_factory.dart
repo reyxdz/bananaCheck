@@ -31,7 +31,7 @@ Future<InferenceService> buildInferenceService({
     return await loadReal();
   } catch (error) {
     debugPrint(
-      '⚠️  DEMO MODE — real TFLite model unavailable ($error).\n'
+      '⚠️  DEMO MODE: real TFLite model unavailable ($error).\n'
       '⚠️  Falling back to MockInferenceService: every scan returns the same '
       'fake result. Add assets/model/banana_classifier.tflite to fix.',
     );

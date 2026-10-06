@@ -109,7 +109,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.bySemanticsLabel(
-        'Lakatan. Unripe, stage 1 of 3. Still green — give it a few days',
+        'Lakatan. Unripe, stage 1 of 3. Still green. Give it a few days',
       ),
       findsOneWidget,
     );

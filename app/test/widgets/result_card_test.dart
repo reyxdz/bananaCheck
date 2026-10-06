@@ -52,7 +52,7 @@ void main() {
     final confidenceCases = <({double confidence, String label})>[
       (confidence: 0.92, label: "We're pretty sure"),
       (confidence: 0.72, label: 'This looks likely'),
-      (confidence: 0.42, label: 'Not very clear — try another photo'),
+      (confidence: 0.42, label: 'Not very clear. Try another photo'),
     ];
 
     for (final testCase in confidenceCases) {
@@ -179,7 +179,7 @@ void main() {
 
       expect(
         find.text(
-          'Starchy cooking banana — filling and energy-giving when cooked',
+          'Starchy cooking banana, filling and energy-giving when cooked',
         ),
         findsOneWidget,
       );

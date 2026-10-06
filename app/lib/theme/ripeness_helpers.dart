@@ -42,11 +42,11 @@ abstract final class RipenessHelpers {
   static String summaryFor(String ripeness) {
     switch (ripeness.toLowerCase()) {
       case 'unripe':
-        return 'Still green — give it a few days';
+        return 'Still green. Give it a few days';
       case 'ripe':
         return 'Ready to eat today';
       case 'overripe':
-        return 'Very soft — best for cooking and baking';
+        return 'Very soft, best for cooking and baking';
       default:
         return '';
     }

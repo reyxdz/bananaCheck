@@ -189,7 +189,7 @@ const bananaInfoMap = <String, BananaInfo>{
   // ── Señorita (dessert banana, small) ──────────────────────────────────
   'senorita': BananaInfo(
     generalBenefits: [
-      'Small and very sweet — a ready-made snack portion',
+      'Small and very sweet, a ready-made snack portion',
       _b6,
       _potassium,
       _vitaminC,
@@ -275,18 +275,19 @@ const bananaInfoMap = <String, BananaInfo>{
 // ── Shared, source-checked statements (see library doc) ────────────────
 
 // Variety-wide (USDA, medium banana vs. FDA Daily Values).
-const _b6 = 'Good source of vitamin B6 — helps the body turn food into energy';
-const _potassium = 'Contains potassium — helps the heart and muscles work';
-const _vitaminC = 'Contains vitamin C — supports the immune system';
-const _fiber = 'Provides dietary fiber — supports healthy digestion';
+const _b6 =
+    'Good source of vitamin B6, which helps the body turn food into energy';
+const _potassium = 'Contains potassium, which helps the heart and muscles work';
+const _vitaminC = 'Contains vitamin C, which supports the immune system';
+const _fiber = 'Provides dietary fiber, which supports healthy digestion';
 const _starchyCooking =
-    'Starchy cooking banana — filling and energy-giving when cooked';
+    'Starchy cooking banana, filling and energy-giving when cooked';
 
 // Per ripeness stage.
 const _resistantStarch =
-    'More resistant starch — digested slowly, for a gentler rise in blood sugar';
+    'More resistant starch, digested slowly for a gentler rise in blood sugar';
 const _gutBacteria = 'Its resistant starch feeds the good bacteria in your gut';
-const _naturalSugars = 'Starch has turned into natural sugars — quick energy';
+const _naturalSugars = 'Starch has turned into natural sugars for quick energy';
 const _easierToDigest = 'Softer and easier to digest than when green';
-const _sweetest = 'Sweetest stage — most of the starch is now sugar';
-const _verySoft = 'Very soft — easy to mash, ideal for cooking and baking';
+const _sweetest = 'Sweetest stage, when most of the starch is now sugar';
+const _verySoft = 'Very soft, easy to mash, ideal for cooking and baking';
