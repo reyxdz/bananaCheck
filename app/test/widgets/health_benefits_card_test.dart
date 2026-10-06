@@ -91,13 +91,13 @@ void main() {
       // General benefit visible.
       expect(
         find.text(
-          'Starchy cooking banana — filling and energy-giving when cooked',
+          'Starchy cooking banana, filling and energy-giving when cooked',
         ),
         findsOneWidget,
       );
       // Ripeness-specific benefit visible.
       expect(
-        find.text('Starch has turned into natural sugars — quick energy'),
+        find.text('Starch has turned into natural sugars for quick energy'),
         findsOneWidget,
       );
     });
@@ -110,7 +110,7 @@ void main() {
 
       expect(
         find.text(
-          'More resistant starch — digested slowly, for a gentler rise in '
+          'More resistant starch, digested slowly for a gentler rise in '
           'blood sugar',
         ),
         findsOneWidget,

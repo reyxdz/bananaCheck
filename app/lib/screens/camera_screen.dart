@@ -317,7 +317,7 @@ class _CameraScreenState extends State<CameraScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Could not take the photo — please try again.',
+            'Could not take the photo. Please try again.',
           ),
         ),
       );
@@ -386,7 +386,7 @@ class _CameraScreenState extends State<CameraScreen>
         _hasTorch = false;
         _torchOn = false;
       });
-      _showMessage("This phone's flash can't be used — try brighter light.");
+      _showMessage("This phone's flash can't be used. Try brighter light.");
     }
   }
 
@@ -489,7 +489,7 @@ class _CameraScreenState extends State<CameraScreen>
       widget.onScan(file);
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Could not open that photo — please try another one.');
+      _showMessage('Could not open that photo. Please try another one.');
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
@@ -778,7 +778,7 @@ class _CameraErrorView extends StatelessWidget {
       iconColor: DesignTokens.error,
       iconBackground: DesignTokens.errorBackground,
       title: message,
-      message: 'Close any other app using the camera, then try again — '
+      message: 'Close any other app using the camera, then try again, '
           'or upload a photo instead.',
       primaryAction: SizedBox(
         height: DesignTokens.primaryActionSize,

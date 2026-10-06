@@ -84,7 +84,7 @@ void main() {
 
       expect(find.text('Overripe'), findsWidgets);
       expect(
-        find.text('Not very clear — try another photo'),
+        find.text('Not very clear. Try another photo'),
         findsOneWidget,
       );
     });

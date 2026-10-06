@@ -84,7 +84,7 @@ class StorageException extends AppException {
 
   @override
   String get actionHint =>
-      'Your scan was still analyzed — try again to save it.';
+      'Your scan was still analyzed. Try again to save it.';
 
   @override
   IconData get icon => Icons.save_rounded;

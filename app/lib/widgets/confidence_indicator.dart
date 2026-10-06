@@ -33,7 +33,7 @@ class ConfidenceIndicator extends StatelessWidget {
       );
     }
     return const _ConfidenceLevel(
-      label: 'Not very clear — try another photo',
+      label: 'Not very clear. Try another photo',
       icon: Icons.help_outline,
       color: DesignTokens.textSecondary,
       bars: 1,
