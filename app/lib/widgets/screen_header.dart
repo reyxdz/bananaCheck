@@ -5,7 +5,7 @@ import '../theme/design_tokens.dart';
 /// Shared top bar for the app's screens.
 ///
 /// * [ScreenHeader.brand] — logo + "Bananalyze" wordmark, for the home
-///   (camera) screen.
+///   (camera) screen. Tapping it calls [onBrandTap] (opens About).
 /// * Default constructor — optional back button + screen title.
 ///
 /// [actions] sit on the right (e.g. History, Clear all).
@@ -16,10 +16,12 @@ class ScreenHeader extends StatelessWidget {
     this.backTooltip = 'Go back',
     this.actions = const [],
     super.key,
-  }) : showBrand = false;
+  })  : showBrand = false,
+        onBrandTap = null;
 
   const ScreenHeader.brand({
     this.actions = const [],
+    this.onBrandTap,
     super.key,
   })  : title = null,
         onBack = null,
@@ -33,6 +35,9 @@ class ScreenHeader extends StatelessWidget {
   final String backTooltip;
   final List<Widget> actions;
   final bool showBrand;
+
+  /// Called when the logo + wordmark is tapped (brand header only).
+  final VoidCallback? onBrandTap;
 
   @override
   Widget build(BuildContext context) {
@@ -54,8 +59,8 @@ class ScreenHeader extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_rounded),
               ),
             if (showBrand) ...[
-              const SizedBox(width: DesignTokens.spacingSmall),
-              const BrandMark(),
+              const SizedBox(width: DesignTokens.spacingExtraSmall),
+              BrandMark(onTap: onBrandTap),
             ] else ...[
               SizedBox(
                 width: onBack == null
@@ -79,13 +84,15 @@ class ScreenHeader extends StatelessWidget {
   }
 }
 
-/// Logo tile + "Bananalyze" wordmark.
+/// Logo tile + "Bananalyze" wordmark. Tappable when [onTap] is set.
 class BrandMark extends StatelessWidget {
-  const BrandMark({super.key});
+  const BrandMark({this.onTap, super.key});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final mark = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         ClipRRect(
@@ -114,6 +121,25 @@ class BrandMark extends StatelessWidget {
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return mark;
+
+    return Semantics(
+      button: true,
+      label: 'About Bananalyze',
+      excludeSemantics: true,
+      child: Tooltip(
+        message: 'About Bananalyze',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
+          child: Padding(
+            padding: const EdgeInsets.all(DesignTokens.spacingExtraSmall),
+            child: mark,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -89,6 +89,7 @@ abstract final class DesignTokens {
   // Icon & Image Sizes
   static const double logoSmall = 36;
   static const double logoMedium = 48;
+  static const double aboutLogoSize = 96;
   static const double iconSmall = 16;
   static const double iconDefault = 20;
   static const double iconSectionHeader = 22;

@@ -67,6 +67,7 @@ class CameraScreen extends StatefulWidget {
   const CameraScreen({
     required this.onScan,
     required this.onHistory,
+    this.onAbout,
     this.pickFromGallery = pickImageFromGallery,
     super.key,
   });
@@ -75,6 +76,9 @@ class CameraScreen extends StatefulWidget {
   /// with Upload a Photo — both feed the same analysis pipeline (§7.8).
   final ValueChanged<File> onScan;
   final VoidCallback onHistory;
+
+  /// Opens the About page when the logo is tapped.
+  final VoidCallback? onAbout;
 
   /// Injectable so widget tests can fake the platform gallery.
   final GalleryPicker pickFromGallery;
@@ -520,6 +524,7 @@ class _CameraScreenState extends State<CameraScreen>
           children: [
             // ── Brand header + History (icon-only, tooltip = label) ──
             ScreenHeader.brand(
+              onBrandTap: widget.onAbout,
               actions: [
                 IconButton(
                   onPressed: widget.onHistory,

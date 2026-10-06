@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'screens/about_screen.dart';
 import 'screens/analyzing_screen.dart';
 import 'screens/camera_screen.dart';
 import 'screens/history_screen.dart';
@@ -110,6 +111,11 @@ class _HomeScreen extends StatelessWidget {
           MaterialPageRoute<void>(
             builder: (_) => HistoryScreen(storageService: storageService),
           ),
+        );
+      },
+      onAbout: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
         );
       },
     );
