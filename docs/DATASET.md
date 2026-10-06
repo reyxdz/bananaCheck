@@ -43,7 +43,7 @@ Run `python -m ml.dataset_scaffold --verify` to check the structure is complete.
 | Cavendish  | Most common commercial banana        |
 | Senorita   | Small, finger-sized dessert banana   |
 | Latundan   | Thin-skinned, mildly sweet           |
-| Cordova    | Regional Philippine cooking variety  |
+| Cordova    | **Cardaba** — Philippine cooking banana (ABB). Folder name is a misspelling kept for model compatibility; the app displays "Cardaba" |
 | Lakatan    | Sweet, golden-yellow when ripe       |
 | Saba       | Cooking banana, thick-skinned        |
 

@@ -60,7 +60,8 @@ void main() {
       expect(find.text('Banana cue'), findsOneWidget);
       expect(find.text('Turon'), findsOneWidget);
       expect(find.text('Maruya'), findsOneWidget);
-      expect(find.text('Saba con yelo'), findsOneWidget);
+      expect(find.text('Ginanggang'), findsOneWidget);
+      expect(find.text('Minatamis na saging'), findsOneWidget);
     });
 
     testWidgets('does not show dishes from other ripeness levels',
@@ -71,8 +72,8 @@ void main() {
 
       // Unripe dish should not appear.
       expect(find.text('Nilupak'), findsNothing);
-      // Overripe dish should not appear.
-      expect(find.text('Banana bread'), findsNothing);
+      // Unripe-only dish should not appear either.
+      expect(find.text('Banana chips'), findsNothing);
     });
   });
 }

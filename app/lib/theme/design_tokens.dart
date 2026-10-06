@@ -171,6 +171,10 @@ abstract final class DesignTokens {
   static const double displayTextSize = 32;
   static const double varietyHeadlineSize = 40;
 
+  /// Side-by-side Variety / Ripeness facts on the results screen.
+  static const double resultFactValueSize = titleTextSize;
+  static const double resultFactLabelSize = bodyTextSize;
+
   /// Line heights / tracking for the scale.
   static const double bodyLineHeight = 1.45;
   static const double headingLineHeight = 1.2;

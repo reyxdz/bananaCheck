@@ -89,21 +89,50 @@ void main() {
       await tester.pumpWidget(buildWidget(info: saba, ripeness: 'ripe'));
 
       // General benefit visible.
-      expect(find.text('Rich in potassium — good for heart health'),
-          findsOneWidget);
+      expect(
+        find.text(
+          'Starchy cooking banana — filling and energy-giving when cooked',
+        ),
+        findsOneWidget,
+      );
       // Ripeness-specific benefit visible.
-      expect(find.text('Natural sugars provide quick energy'), findsOneWidget);
+      expect(
+        find.text('Starch has turned into natural sugars — quick energy'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('works with Cordova + unripe (fallback — no unripe key)',
+    testWidgets('Cardaba (model label "Cordova") unripe shows real facts',
         (tester) async {
-      final cordova = bananaInfoMap['cordova']!;
+      final cardaba = bananaInfoFor('Cordova')!;
 
-      await tester.pumpWidget(buildWidget(info: cordova, ripeness: 'unripe'));
+      await tester.pumpWidget(buildWidget(info: cardaba, ripeness: 'unripe'));
 
-      // General benefits still visible.
-      expect(find.text('Good source of Vitamin C — supports immune health'),
-          findsOneWidget);
+      expect(
+        find.text(
+          'More resistant starch — digested slowly, for a gentler rise in '
+          'blood sugar',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('falls back to general benefits when a stage is missing',
+        (tester) async {
+      const info = BananaInfo(
+        generalBenefits: ['General fact'],
+        byRipeness: {
+          'ripe': RipenessInfo(
+            healthBenefits: ['Ripe fact'],
+            dishSuggestions: ['Dish'],
+          ),
+        },
+      );
+
+      await tester.pumpWidget(buildWidget(info: info, ripeness: 'unripe'));
+
+      expect(find.text('General fact'), findsOneWidget);
+      expect(find.text('Ripe fact'), findsNothing);
     });
   });
 }

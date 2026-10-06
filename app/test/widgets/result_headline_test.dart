@@ -29,30 +29,37 @@ double _segmentHeight(WidgetTester tester, String label) {
 }
 
 void main() {
-  testWidgets('variety is the largest text on the headline', (tester) async {
-    await tester.pumpWidget(
-      _app(const ResultHeadline(variety: 'Lakatan', ripeness: 'Ripe')),
-    );
-    await tester.pumpAndSettle();
-
-    final variety = tester.widget<Text>(find.text('Lakatan'));
-    expect(variety.style!.fontSize, DesignTokens.varietyHeadlineSize);
-    // No generic label above it any more.
-    expect(find.text('Your banana'), findsNothing);
-  });
-
-  testWidgets('ripeness is stated large, with icon, colour and meaning',
+  testWidgets('variety and ripeness sit side by side with labels',
       (tester) async {
     await tester.pumpWidget(
       _app(const ResultHeadline(variety: 'Lakatan', ripeness: 'Ripe')),
     );
     await tester.pumpAndSettle();
 
-    final statement = tester
-        .widgetList<Text>(find.text('Ripe'))
-        .firstWhere((t) => t.style?.fontSize == DesignTokens.headingTextSize);
-    expect(statement.style!.color, RipenessHelpers.colorFor('Ripe'));
-    expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    final variety = tester.widget<Text>(find.text('Lakatan'));
+    expect(variety.style!.fontSize, DesignTokens.resultFactValueSize);
+    expect(find.text('Variety'), findsOneWidget);
+    expect(find.text('Ripeness'), findsOneWidget);
+    expect(find.byIcon(Icons.eco_rounded), findsOneWidget);
+
+    // Same row: tops aligned, ripeness to the right of variety.
+    final varietyPos = tester.getTopLeft(find.text('Variety'));
+    final ripenessPos = tester.getTopLeft(find.text('Ripeness'));
+    expect(ripenessPos.dy, varietyPos.dy);
+    expect(ripenessPos.dx, greaterThan(varietyPos.dx));
+  });
+
+  testWidgets('ripeness is stated with coloured icon and meaning',
+      (tester) async {
+    await tester.pumpWidget(
+      _app(const ResultHeadline(variety: 'Lakatan', ripeness: 'Ripe')),
+    );
+    await tester.pumpAndSettle();
+
+    tester.widgetList<Text>(find.text('Ripe')).firstWhere(
+        (t) => t.style?.fontSize == DesignTokens.resultFactValueSize);
+    final icon = tester.widget<Icon>(find.byIcon(Icons.check_circle_rounded));
+    expect(icon.color, RipenessHelpers.colorFor('Ripe'));
     expect(find.text('Ready to eat today'), findsOneWidget);
   });
 
