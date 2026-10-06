@@ -89,6 +89,7 @@ abstract final class DesignTokens {
   // Icon & Image Sizes
   static const double logoSmall = 36;
   static const double logoMedium = 48;
+  static const double aboutLogoSize = 96;
   static const double iconSmall = 16;
   static const double iconDefault = 20;
   static const double iconSectionHeader = 22;
@@ -170,6 +171,10 @@ abstract final class DesignTokens {
   static const double resultHeadlineSize = 30;
   static const double displayTextSize = 32;
   static const double varietyHeadlineSize = 40;
+
+  /// Side-by-side Variety / Ripeness facts on the results screen.
+  static const double resultFactValueSize = titleTextSize;
+  static const double resultFactLabelSize = bodyTextSize;
 
   /// Line heights / tracking for the scale.
   static const double bodyLineHeight = 1.45;

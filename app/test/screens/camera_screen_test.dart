@@ -300,6 +300,28 @@ void main() {
 
   // ── A33: upload image from gallery (§7.8) ──
 
+  group('CameraScreen — logo', () {
+    testWidgets('tapping the logo opens About', (tester) async {
+      stubPermissionHandler(cameraStatus: 0);
+      var opened = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CameraScreen(
+            onScan: (_) {},
+            onHistory: () {},
+            onAbout: () => opened++,
+            pickFromGallery: () async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Bananalyze'));
+      expect(opened, 1);
+      expect(find.bySemanticsLabel('About Bananalyze'), findsOneWidget);
+    });
+  });
+
   group('CameraScreen — Upload Photo', () {
     late Directory tempDir;
 

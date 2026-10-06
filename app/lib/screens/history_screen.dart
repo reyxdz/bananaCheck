@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../models/banana_info_data.dart';
 import '../models/scan_record.dart';
 import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
@@ -295,7 +296,7 @@ class _HistoryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      record.result.variety,
+                      displayVarietyName(record.result.variety),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium,

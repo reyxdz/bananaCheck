@@ -77,9 +77,9 @@ class ResultCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Headline: variety large, ripeness word + ripening scale ──
+                // ── Variety and ripeness side by side, then the ripening scale ──
                 ResultHeadline(
-                  variety: result.variety,
+                  variety: displayVarietyName(result.variety),
                   ripeness: result.ripeness,
                 ),
 
@@ -118,7 +118,7 @@ class ResultCard extends StatelessWidget {
   /// [bananaInfoMap]. Returns an empty [SizedBox] when the variety is not
   /// found so the layout degrades gracefully.
   Widget _buildInfoCards() {
-    final info = bananaInfoMap[result.variety.toLowerCase()];
+    final info = bananaInfoFor(result.variety);
     if (info == null) return const SizedBox.shrink();
 
     final lowerRipeness = result.ripeness.toLowerCase();
@@ -129,7 +129,11 @@ class ResultCard extends StatelessWidget {
       children: [
         const SizedBox(height: DesignTokens.spacingSmall + 4),
         HealthBenefitsCard(info: info, ripeness: lowerRipeness),
-        if (ripenessInfo != null) ...[
+        // Unripe dessert bananas have no dishes — they should ripen first
+        // (the handling tip says so), so skip the card rather than show it
+        // empty.
+        if (ripenessInfo != null &&
+            ripenessInfo.dishSuggestions.isNotEmpty) ...[
           const SizedBox(height: DesignTokens.spacingSmall + 4),
           DishSuggestionsCard(ripenessInfo: ripenessInfo),
         ],

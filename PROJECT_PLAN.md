@@ -416,7 +416,7 @@ pytest
 
 ### 7.6 Banana Info Data — Health Benefits & Dish Suggestions (Per Ripeness)
 
-The app supports **6 fixed banana varieties**: Saba, Cordova, Cavendish, Senorita, Latundan, and Lakatan. For each variety **and ripeness level**, the results screen shows **health benefits** and **suggested dishes** — all hardcoded, no API or database required.
+The app supports **6 fixed banana varieties**: Saba, Cardaba (model class `Cordova`), Cavendish, Senorita, Latundan, and Lakatan. For each variety **and ripeness level**, the results screen shows **health benefits** and **suggested dishes** — all hardcoded, no API or database required.
 
 #### Data rules
 
@@ -432,12 +432,18 @@ The app supports **6 fixed banana varieties**: Saba, Cordova, Cavendish, Senorit
 
 | Variety | Unripe | Ripe | Overripe |
 |---|---|---|---|
-| **Saba** | Nilupak, Ginanggang, Boiled saba | Banana cue, Turon, Maruya, Saba con yelo | Maruya (sweeter batter), Banana bread, Sweetened mashed saba |
-| **Cordova** | Not typically eaten unripe | Eaten fresh, Banana shake, Fruit salad | Banana bread, Smoothie |
-| **Cavendish** | Green smoothie (blended), Banana chips (fried) | Eaten fresh, Banana pancakes, Smoothie bowl, Banana split | Banana bread, Banana muffins, Banana ice cream |
-| **Senorita** | Not typically eaten unripe | Eaten fresh (snack banana), Dessert garnish, Fruit platter | Smoothie, Mashed for baby food |
-| **Latundan** | Not typically eaten unripe | Eaten fresh, Banana fritter, Ginataang saging | Banana ice cream, Banana jam, Overripe banana bread |
-| **Lakatan** | Banana chips, Green banana salad | Eaten fresh, Banana cue, Turon, Smoothie bowl | Banana bread, Banana pancakes, Banana ice cream |
+| **Saba** (cooking) | Nilagang saging (boiled), Banana chips, Nilupak | Banana cue, Turon, Maruya, Ginanggang, Minatamis na saging | Maruya, Minatamis na saging |
+| **Cardaba** (cooking) | Nilagang saging (boiled), Banana chips | Banana cue, Turon, Maruya, Minatamis na saging | Maruya, Minatamis na saging |
+| **Cavendish** (dessert) | — let it ripen | Eaten fresh, Banana shake, Fruit salad, Banana pancakes | Banana bread, Banana muffins, Smoothie, Banana ice cream |
+| **Senorita** (dessert) | — let it ripen | Eaten fresh, Fruit platter, Dessert topping | Smoothie, Mashed for baby food |
+| **Latundan** (dessert) | — let it ripen | Eaten fresh, Fruit salad, Banana shake | Banana bread, Smoothie, Mashed for baby food |
+| **Lakatan** (dessert) | — let it ripen | Eaten fresh, Banana shake, Fruit salad | Banana bread, Banana pancakes, Smoothie |
+
+Every variety has all three stages, because the model detects all three. Dessert bananas have no unripe dishes: the results screen's handling tip tells the user to let them ripen, and the empty dish card is hidden.
+
+**Cardaba vs. "Cordova":** the dataset folders, `ml/classes.py` and `labels.txt` use the misspelling `Cordova`. It stays inside the model, because renaming it would change the alphabetical class order (§9.1) and needs a retrain. The app maps it to **Cardaba** with `displayVarietyName()` / `bananaInfoFor()` in `banana_info_data.dart`.
+
+**Health facts** are checked against USDA FoodData Central ("Bananas, raw") and the green-banana resistant-starch literature, and are worded to match the actual % Daily Value. "Most antioxidants when overripe" and "peak vitamins when ripe" are deliberately not claimed. See the sources comment at the top of `banana_info_data.dart`.
 
 #### Example data structure (Dart)
 

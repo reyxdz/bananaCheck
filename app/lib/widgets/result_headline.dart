@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../theme/design_tokens.dart';
 import '../theme/ripeness_helpers.dart';
 
-/// The two answers a scan gives, as large as the screen allows:
+/// The two answers a scan gives, shown side by side under the photo:
 ///
-/// * **Variety** — set big, straight under the photo.
-/// * **Ripeness** — the stage word with its icon, what it means in plain
-///   language, and a ripening scale (green → yellow → brown) that shows
+/// * **Variety** — leaf icon, the variety name, and a "Variety" label.
+/// * **Ripeness** — the stage icon and word with a "Ripeness" label, then
+///   what it means in plain language and a ripening scale (green → yellow → brown) that shows
 ///   where this banana sits. Colour is never the only cue (§7.4): the stage
 ///   is always written out.
 ///
@@ -46,44 +46,31 @@ class ResultHeadline extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Variety ──
-            Text(
-              variety,
-              style: const TextStyle(
-                fontSize: DesignTokens.varietyHeadlineSize,
-                fontWeight: FontWeight.w700,
-                color: DesignTokens.textPrimary,
-                height: 1.05,
-                letterSpacing: -1,
-              ),
-            ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Ripeness statement ──
+            // ── Variety and ripeness, side by side ──
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  RipenessHelpers.iconFor(ripeness),
-                  color: color,
-                  size: DesignTokens.iconMedium,
+                Expanded(
+                  child: _Fact(
+                    icon: Icons.eco_rounded,
+                    iconColor: DesignTokens.primary,
+                    value: variety,
+                    label: 'Variety',
+                  ),
                 ),
-                const SizedBox(width: DesignTokens.spacingSmall),
-                Flexible(
-                  child: Text(
-                    ripeness,
-                    style: TextStyle(
-                      fontSize: DesignTokens.headingTextSize,
-                      fontWeight: FontWeight.w700,
-                      color: color,
-                      height: DesignTokens.headingLineHeight,
-                    ),
+                const SizedBox(width: DesignTokens.spacingMedium),
+                Expanded(
+                  child: _Fact(
+                    icon: RipenessHelpers.iconFor(ripeness),
+                    iconColor: color,
+                    value: ripeness,
+                    label: 'Ripeness',
                   ),
                 ),
               ],
             ),
             if (summary.isNotEmpty) ...[
-              const SizedBox(height: DesignTokens.spacingExtraSmall),
+              const SizedBox(height: DesignTokens.spacingMedium),
               Text(summary, style: textTheme.bodyLarge),
             ],
 
@@ -95,6 +82,57 @@ class ResultHeadline extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One answer: an icon beside a bold value with a small grey label under it.
+class _Fact extends StatelessWidget {
+  const _Fact({
+    required this.icon,
+    required this.iconColor,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, color: iconColor, size: DesignTokens.iconMedium),
+        const SizedBox(width: DesignTokens.spacingSmall + 4),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: DesignTokens.resultFactValueSize,
+                  fontWeight: FontWeight.w700,
+                  color: DesignTokens.textPrimary,
+                  height: DesignTokens.headingLineHeight,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: DesignTokens.resultFactLabelSize,
+                  color: DesignTokens.textSecondary,
+                  height: DesignTokens.headingLineHeight,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -66,7 +66,7 @@ void main() {
     test('contains all expected varieties', () {
       const expectedVarieties = [
         'saba',
-        'cordova',
+        'cardaba',
         'cavendish',
         'senorita',
         'latundan',
@@ -109,11 +109,11 @@ void main() {
       }
     });
 
-    test('every ripeness entry has at least one dish suggestion', () {
+    test('ripe and overripe entries always have dish suggestions', () {
       for (final entry in bananaInfoMap.entries) {
-        for (final ripenessEntry in entry.value.byRipeness.entries) {
-          expect(ripenessEntry.value.dishSuggestions, isNotEmpty,
-              reason: '${entry.key} / ${ripenessEntry.key} should have dishes');
+        for (final ripeness in ['ripe', 'overripe']) {
+          expect(entry.value.byRipeness[ripeness]!.dishSuggestions, isNotEmpty,
+              reason: '${entry.key} / $ripeness should have dishes');
         }
       }
     });
@@ -149,16 +149,76 @@ void main() {
       expect(lakatan.byRipeness, contains('overripe'));
     });
 
-    test('varieties not typically eaten unripe omit the unripe key', () {
-      // Per §7.6 table: Cordova, Senorita, Latundan are not
-      // typically eaten unripe — their 'unripe' key should be absent so
-      // the widget layer falls back to generalBenefits only.
-      const noUnripeVarieties = ['cordova', 'senorita', 'latundan'];
-
-      for (final variety in noUnripeVarieties) {
-        expect(bananaInfoMap[variety]!.byRipeness, isNot(contains('unripe')),
-            reason: '$variety should not have an unripe entry');
+    test('every variety has all three ripeness stages the model detects', () {
+      for (final entry in bananaInfoMap.entries) {
+        expect(
+          entry.value.byRipeness.keys,
+          containsAll(['unripe', 'ripe', 'overripe']),
+          reason: entry.key,
+        );
       }
+    });
+
+    test('cooking bananas get green-banana dishes; dessert bananas none', () {
+      for (final cooking in ['saba', 'cardaba']) {
+        expect(
+          bananaInfoMap[cooking]!.byRipeness['unripe']!.dishSuggestions,
+          contains('Banana chips'),
+          reason: cooking,
+        );
+      }
+      // Dessert bananas are left to ripen, not cooked green.
+      for (final dessert in ['cavendish', 'lakatan', 'latundan', 'senorita']) {
+        expect(
+          bananaInfoMap[dessert]!.byRipeness['unripe']!.dishSuggestions,
+          isEmpty,
+          reason: dessert,
+        );
+      }
+    });
+
+    test('saba/cardaba street dishes are not listed for dessert bananas', () {
+      const cookingOnly = [
+        'Banana cue',
+        'Turon',
+        'Maruya',
+        'Ginanggang',
+        'Ginataang saging',
+      ];
+      for (final dessert in ['cavendish', 'lakatan', 'latundan', 'senorita']) {
+        final dishes = bananaInfoMap[dessert]!
+            .byRipeness
+            .values
+            .expand((r) => r.dishSuggestions);
+        for (final dish in cookingOnly) {
+          expect(dishes, isNot(contains(dish)), reason: '$dessert: $dish');
+        }
+      }
+    });
+
+    test('no unsupported health claims', () {
+      final allText = bananaInfoMap.values.expand(
+        (info) => [
+          ...info.generalBenefits,
+          ...info.byRipeness.values.expand((r) => r.healthBenefits),
+        ],
+      );
+      for (final text in allText) {
+        final lower = text.toLowerCase();
+        // Overripe "most antioxidants" traces back to a debunked claim.
+        expect(lower, isNot(contains('antioxidant')), reason: text);
+        expect(lower, isNot(contains('peak vitamin')), reason: text);
+        // Bananas give ~9% DV potassium and ~11% DV vitamin C — not "rich".
+        expect(lower, isNot(contains('rich in')), reason: text);
+      }
+    });
+
+    test('Cardaba is shown for the model\'s misspelt "Cordova" class', () {
+      expect(displayVarietyName('Cordova'), 'Cardaba');
+      expect(displayVarietyName('cordova'), 'Cardaba');
+      expect(displayVarietyName('Lakatan'), 'Lakatan');
+      expect(bananaInfoFor('Cordova'), same(bananaInfoMap['cardaba']));
+      expect(bananaInfoMap, isNot(contains('cordova')));
     });
 
     test('lookup flow matches inference output pattern', () {
@@ -166,7 +226,7 @@ void main() {
       const variety = 'Saba';
       const ripeness = 'Ripe';
 
-      final info = bananaInfoMap[variety.toLowerCase()];
+      final info = bananaInfoFor(variety);
       expect(info, isNotNull);
 
       final ripenessInfo = info!.byRipeness[ripeness.toLowerCase()];

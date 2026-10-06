@@ -178,14 +178,30 @@ void main() {
       await tester.pumpWidget(buildCard(result: result));
 
       expect(
-        find.text('Rich in potassium — good for heart health'),
+        find.text(
+          'Starchy cooking banana — filling and energy-giving when cooked',
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets('hides dish suggestions when ripeness key missing',
+    testWidgets('unripe dessert banana: benefits shown, no empty dish card',
         (tester) async {
-      // Cordova has no 'unripe' key.
+      // Dessert bananas are left to ripen — no green-banana dishes.
+      final result = ClassificationResult(
+        variety: 'Lakatan',
+        ripeness: 'Unripe',
+        confidence: 0.80,
+      );
+
+      await tester.pumpWidget(buildCard(result: result));
+
+      expect(find.text('Health Benefits'), findsOneWidget);
+      expect(find.text('Suggested Dishes'), findsNothing);
+    });
+
+    testWidgets('model label "Cordova" is shown as Cardaba with its dishes',
+        (tester) async {
       final result = ClassificationResult(
         variety: 'Cordova',
         ripeness: 'Unripe',
@@ -194,10 +210,11 @@ void main() {
 
       await tester.pumpWidget(buildCard(result: result));
 
-      // Health benefits still shown (general).
-      expect(find.text('Health Benefits'), findsOneWidget);
-      // Dish suggestions hidden — no ripeness key.
-      expect(find.text('Suggested Dishes'), findsNothing);
+      expect(find.text('Cardaba'), findsOneWidget);
+      expect(find.text('Cordova'), findsNothing);
+      // Cooking banana: green-banana dishes are suggested.
+      expect(find.text('Suggested Dishes'), findsOneWidget);
+      expect(find.text('Banana chips'), findsOneWidget);
     });
 
     testWidgets('hides both info cards for unknown variety', (tester) async {
