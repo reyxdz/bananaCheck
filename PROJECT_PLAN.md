@@ -24,14 +24,29 @@ banana-classifier/
 │   │   ├── screens/
 │   │   │   ├── camera_screen.dart
 │   │   │   ├── results_screen.dart
-│   │   │   └── history_screen.dart
+│   │   │   ├── history_screen.dart
+│   │   │   └── onboarding_screen.dart  # first-time swipeable tutorial (§7.7)
 │   │   ├── services/
-│   │   │   ├── inference_service.dart   # TFLite wrapper
-│   │   │   └── storage_service.dart     # sqflite/Hive wrapper
+│   │   │   ├── inference_service.dart   # InferenceService interface (§9)
+│   │   │   ├── tflite_inference_service.dart  # real on-device model (B13)
+│   │   │   ├── inference_service_factory.dart # real model, mock fallback + demo-mode check (A21, §9.1)
+│   │   │   ├── storage_service.dart     # sqflite/Hive wrapper
+│   │   │   ├── preferences_service.dart # shared_preferences wrapper for first-launch flag (§7.7)
+│   │   │   └── frame_quality.dart       # live-preview brightness/banana-colour hints (§7.9)
 │   │   ├── models/
+│   │   │   ├── classification_result.dart
+│   │   │   ├── scan_record.dart
+│   │   │   └── banana_info_data.dart  # hardcoded per-ripeness health benefits & dish data (§7.6)
 │   │   └── widgets/
+│   │       ├── result_card.dart
+│   │       ├── confidence_indicator.dart
+│   │       ├── health_benefits_card.dart   # health benefits display (§7.6)
+│   │       ├── dish_suggestions_card.dart # dish suggestions display (§7.6)
+│   │       ├── camera_controls.dart       # gallery · shutter · flash row (§7.8, §7.9)
+│   │       └── scan_overlay.dart          # scan frame brackets + hint pill (§7.9)
 │   ├── assets/
-│   │   └── model/               # bundled .tflite file + labels.txt
+│   │   ├── images/              # logo, mascot, onboarding photos page1–3.png (§7.7)
+│   │   └── model/               # banana_classifier.tflite + labels.txt (§9.1)
 │   ├── test/                    # unit + widget tests
 │   └── pubspec.yaml
 │
@@ -44,12 +59,22 @@ banana-classifier/
 │   ├── requirements.txt
 │   └── tests/
 │
-├── backend/                     # FastAPI — retraining/model-mgmt only
+├── backend/                     # FastAPI — DEV/TESTING ONLY (never shipped, app never calls this)
 │   ├── app/
-│   │   ├── main.py
+│   │   ├── main.py              # FastAPI entry point, CORS, lifespan
 │   │   ├── routers/
-│   │   └── services/
+│   │   │   ├── classify.py      # POST /classify — batch-test model with images
+│   │   │   └── health.py        # GET /health — service health check
+│   │   ├── services/
+│   │   │   ├── inference.py     # Loads TFLite/Keras model, runs prediction
+│   │   │   └── preprocessing.py # Same resize/normalize logic as ml/preprocess.py
+│   │   ├── models/
+│   │   │   └── schemas.py       # Pydantic schemas mirroring ClassificationResult
+│   │   └── config.py            # Model path, class labels, confidence thresholds
 │   ├── tests/
+│   │   ├── test_classify.py     # /classify endpoint tests
+│   │   ├── test_health.py       # /health endpoint test
+│   │   └── test_preprocessing.py # Shared preprocessing unit tests
 │   └── requirements.txt
 │
 ├── docs/
@@ -124,7 +149,9 @@ venv/
 # Dataset & large files — never commit raw images
 ml/data/
 *.h5
-*.tflite.bak
+*.tflite
+# …except the one validated model the app ships (§9.1)
+!app/assets/model/banana_classifier.tflite
 
 # IDE
 .vscode/
@@ -353,10 +380,11 @@ pytest
 
 ### 7.1 Core principle: fewest taps possible
 
-- **Target: app open → result shown in 2 taps maximum** — (1) tap capture button, (2) nothing else; result appears automatically after processing. No confirmation dialogs, no "are you sure you want to scan?" steps.
-- **No multi-step wizards, no onboarding tutorial screens** on first launch. If guidance is needed, use a single unobtrusive overlay hint on the camera screen itself (e.g. "Point at banana and tap"), dismissible and never shown again — not a separate tutorial flow.
+- **Target: app open → result shown in 2 taps maximum** — (1) tap capture button or pick from gallery, (2) nothing else; result appears automatically after processing. No confirmation dialogs, no "are you sure you want to scan?" steps.
+- **Minimal first-launch onboarding only (§7.7):** a swipeable 3–4 page introduction shown **only once** on first install to teach farmers how to use the app. Must be skippable and never shown again after completion. Beyond this one-time flow, no multi-step wizards or tutorial screens.
 - **No hamburger menus, no nested navigation, no settings screens buried behind icons.** If history is included, it should be one tap away from the camera screen (a single visible icon/button), not inside a menu.
-- **One primary action per screen.** The camera screen has exactly one button that matters: capture. The results screen has exactly one primary action: scan again.
+- **Two input methods on the camera screen:** the primary capture (shutter) button **and** a secondary gallery button for picking an existing image from the device (§7.8). They sit in one standard camera control row — gallery left, shutter centre, flash right (§7.9). Both inputs funnel into the same analysis pipeline.
+- **One primary action per screen.** The camera screen has exactly one primary button that matters: capture. The "Upload Photo" button is a clearly secondary action. The results screen has exactly one primary action: scan again.
 
 ### 7.2 Visual style
 
@@ -364,6 +392,7 @@ pytest
 - **Color palette:** limited and consistent — one primary color (suggest a natural green, evoking agriculture/bananas, e.g. `#2E7D32`), one accent, and a neutral background (white/very light gray). Do not introduce ad-hoc colors per screen.
 - **Typography:** one font family app-wide (e.g. Inter, Poppins, or Roboto — pick one and lock it in `design_tokens.dart`). Minimum body text size **16sp**, headers **20sp+** — no fine print. Avoid more than 2 font weights (e.g. Regular + Bold only).
 - **Icons over text where possible**, but never icon-only for critical actions — always pair an icon with a short, plain-language label (e.g. a camera icon **and** the word "Scan," not just the icon).
+  - **Agreed exception — camera control row (§7.9):** the shutter, gallery and flash buttons are icon-only, following the standard camera-app layout. Each still carries a spoken/long-press label ("Scan", "Upload a Photo", "Turn flash on/off"), and the hint pill above the scan frame tells the user what to do ("Looks good, tap Scan"). Re-check this with real farmers during device testing (A22); if they hesitate, put short labels back under the three buttons.
 
 ### 7.3 Language and content
 
@@ -384,6 +413,152 @@ pytest
 - All colors, spacing, and font sizes must come from `lib/theme/design_tokens.dart` — **no hardcoded hex colors or font sizes inside individual screen/widget files.** A PR introducing a one-off color or font size outside the token file should be rejected in review.
 - The PR template (§4.3) includes a checklist item confirming UI guideline compliance for any UI-touching PR.
 - Recommend Emanuel build `design_tokens.dart` and a small set of reusable themed components (`PrimaryButton`, `ResultCard`, etc.) in Week 1 (see §9, task A1/A2 area) so every subsequent screen pulls from the same source instead of reinventing style per screen.
+
+### 7.6 Banana Info Data — Health Benefits & Dish Suggestions (Per Ripeness)
+
+The app supports **6 fixed banana varieties**: Saba, Cardaba (model class `Cordova`), Cavendish, Senorita, Latundan, and Lakatan. For each variety **and ripeness level**, the results screen shows **health benefits** and **suggested dishes** — all hardcoded, no API or database required.
+
+#### Data rules
+
+- **All variety data lives in a single file:** `lib/models/banana_info_data.dart`. This file contains:
+  - A `RipenessInfo` model class holding `List<String> healthBenefits` and `List<String> dishSuggestions` for one ripeness level.
+  - A `BananaInfo` model class holding `Map<String, RipenessInfo> byRipeness` (keyed by lowercase ripeness: `"unripe"`, `"ripe"`, `"overripe"`) plus a `List<String> generalBenefits` for variety-wide facts that apply regardless of ripeness.
+  - A top-level `bananaInfoMap` constant (`Map<String, BananaInfo>`) keyed by lowercase variety name.
+- **Do not scatter hardcoded health benefits or dish data across widgets.** Widgets receive a `BananaInfo` + the detected ripeness string — they never construct data themselves.
+- **Lookup is by variety name + ripeness.** After inference, the variety and ripeness strings from `ClassificationResult` are lowercased and used as map keys. If the variety is not found in the map, the health benefits/dish sections are gracefully hidden — no crash, no empty card. If the ripeness key is missing within a known variety, fall back to showing `generalBenefits` only and hide the dish card.
+- **Health benefit statements are general and informational**, sourced from standard references (USDA / FNRI). The app is not a dietary or medical tool.
+
+#### Supported varieties & dishes by ripeness
+
+| Variety | Unripe | Ripe | Overripe |
+|---|---|---|---|
+| **Saba** (cooking) | Nilagang saging (boiled), Banana chips, Nilupak | Banana cue, Turon, Maruya, Ginanggang, Minatamis na saging | Maruya, Minatamis na saging |
+| **Cardaba** (cooking) | Nilagang saging (boiled), Banana chips | Banana cue, Turon, Maruya, Minatamis na saging | Maruya, Minatamis na saging |
+| **Cavendish** (dessert) | — let it ripen | Eaten fresh, Banana shake, Fruit salad, Banana pancakes | Banana bread, Banana muffins, Smoothie, Banana ice cream |
+| **Senorita** (dessert) | — let it ripen | Eaten fresh, Fruit platter, Dessert topping | Smoothie, Mashed for baby food |
+| **Latundan** (dessert) | — let it ripen | Eaten fresh, Fruit salad, Banana shake | Banana bread, Smoothie, Mashed for baby food |
+| **Lakatan** (dessert) | — let it ripen | Eaten fresh, Banana shake, Fruit salad | Banana bread, Banana pancakes, Smoothie |
+
+Every variety has all three stages, because the model detects all three. Dessert bananas have no unripe dishes: the results screen's handling tip tells the user to let them ripen, and the empty dish card is hidden.
+
+**Cardaba vs. "Cordova":** the dataset folders, `ml/classes.py` and `labels.txt` use the misspelling `Cordova`. It stays inside the model, because renaming it would change the alphabetical class order (§9.1) and needs a retrain. The app maps it to **Cardaba** with `displayVarietyName()` / `bananaInfoFor()` in `banana_info_data.dart`.
+
+**Health facts** are checked against USDA FoodData Central ("Bananas, raw") and the green-banana resistant-starch literature, and are worded to match the actual % Daily Value. "Most antioxidants when overripe" and "peak vitamins when ripe" are deliberately not claimed. See the sources comment at the top of `banana_info_data.dart`.
+
+#### Example data structure (Dart)
+
+```dart
+class RipenessInfo {
+  final List<String> healthBenefits;
+  final List<String> dishSuggestions;
+  const RipenessInfo({required this.healthBenefits, required this.dishSuggestions});
+}
+
+class BananaInfo {
+  final List<String> generalBenefits;       // variety-wide, shown regardless of ripeness
+  final Map<String, RipenessInfo> byRipeness; // keyed: "unripe", "ripe", "overripe"
+  const BananaInfo({required this.generalBenefits, required this.byRipeness});
+}
+
+const bananaInfoMap = <String, BananaInfo>{
+  'saba': BananaInfo(
+    generalBenefits: [
+      'Rich in potassium — good for heart health',
+      'High in dietary fiber — aids digestion',
+      'Good source of Vitamin B6',
+    ],
+    byRipeness: {
+      'unripe': RipenessInfo(
+        healthBenefits: ['Higher resistant starch — helps manage blood sugar'],
+        dishSuggestions: ['Nilupak', 'Ginanggang', 'Boiled saba'],
+      ),
+      'ripe': RipenessInfo(
+        healthBenefits: ['Natural sugars provide quick energy'],
+        dishSuggestions: ['Banana cue', 'Turon', 'Maruya', 'Saba con yelo'],
+      ),
+      'overripe': RipenessInfo(
+        healthBenefits: ['Highest antioxidant content', 'Easiest to digest'],
+        dishSuggestions: ['Maruya (sweeter batter)', 'Banana bread', 'Sweetened mashed saba'],
+      ),
+    },
+  ),
+  // ... remaining 5 varieties
+};
+```
+
+#### UI presentation
+
+- **`HealthBenefitsCard` widget** — displays `generalBenefits` (variety-wide) plus the ripeness-specific `healthBenefits` from the matching `RipenessInfo`. Uses design tokens for all styling. Plain language only — no jargon (§7.3).
+- **`DishSuggestionsCard` widget** — displays **only the dishes for the detected ripeness** as styled chips. If the scanned banana is "Ripe Saba," the user sees Banana cue, Turon, Maruya, Saba con yelo — not the full list across all ripeness levels. No interaction needed — informational only.
+- Both cards appear inside `ResultCard`, below the existing confidence indicator and vendor advice sections. They render only when a `BananaInfo` entry exists for the scanned variety and the ripeness key is present.
+- When a variety entry exists but the specific ripeness key is missing, show only the `generalBenefits` and hide the dish suggestions card gracefully.
+
+### 7.7 Onboarding — First-Time Tutorial (Swipeable)
+
+A lightweight, swipeable onboarding flow shown **only on the user's very first launch** of the app. Designed for farmers/vendors who may never have used a classification app before.
+
+#### Behavior rules
+
+- **Shown once only.** On first launch, the app checks a `bool` flag in `shared_preferences` (`has_completed_onboarding`). If `false` or absent → show onboarding. After the user completes or skips it → set flag to `true`, never show again.
+- **Skippable.** A visible "Skip" button must be present on every page so experienced users can jump straight to the camera screen.
+- **3–4 pages maximum.** Each page is a single full-screen illustration/icon + a short headline + one sentence of plain-language explanation. No walls of text.
+- **Swipe-based navigation** with dot indicators at the bottom, plus a **Next** button (and **Back** from page 2 on) for users who don't think to swipe. Final page has a "Get Started" button that navigates to the camera screen.
+- **No login, no account creation, no data collection.** This is purely instructional.
+
+#### Onboarding pages (as built — 3 pages)
+
+| Page | Image | Headline | Content |
+|---|---|---|---|
+| 1 — Welcome | `page1.png`, full-bleed photo | Know your bananas. / Better decisions for your harvest. | Scan a banana to see its variety and ripeness — right on your phone. No internet needed. |
+| 2 — How it works | `page2.png` (phone scanning a banana) | 3 easy steps | 1. Take a photo (or upload one) · 2. We check it for you · 3. Get your result |
+| 3 — Ready to go | `page3.png` + sample result card | Smarter farming starts with a scan. | Benefits (harvest/sell timing, less waste, right price) + "Works offline · For farmers and vendors" |
+
+Upload is covered inside step 1 of page 2 rather than on its own page.
+
+#### Implementation
+
+- **File:** `lib/screens/onboarding_screen.dart`
+- **Preferences service:** `lib/services/preferences_service.dart` — wraps `shared_preferences` to read/write the `has_completed_onboarding` flag.
+- **Navigation:** `main.dart` checks the flag at startup. If onboarding is needed, push `OnboardingScreen` before `CameraScreen`. After completion, navigate to camera and clear the backstack so the user can't swipe back to onboarding.
+- **Design:** uses `DesignTokens` for all colors/spacing/typography (§7.5). Each page uses a large centered icon or illustration + headline + description. Dot indicators use `DesignTokens.primary` for the active dot.
+
+### 7.8 Upload Image from Gallery
+
+A secondary input method that lets users pick an existing photo from their device's gallery instead of capturing a live photo. Useful when:
+- The user already photographed the banana earlier
+- The camera is not working or unavailable
+- The user wants to analyze a photo someone sent them
+
+#### Behavior rules
+
+- **Secondary action, not primary.** The capture button remains the dominant, largest element on the camera screen per §7.1. The gallery button is smaller (56dp vs. the 80dp shutter) and sits to the **left** of the shutter in the camera control row (§7.9).
+- **Labels.** In the camera control row the gallery button is icon-only under the §7.2 exception, announced as "Upload a Photo". When camera access is denied or turned off, the screen instead shows a filled primary button ("Allow Camera" / "Open Settings") with an outlined **"Upload a Photo"** button (icon + label) directly below it, both in the thumb zone.
+- **Always available.** Upload works with or without camera permission, and when the camera fails to start.
+- **Same analysis pipeline.** After the user picks an image, it feeds into the same `InferenceService.classify(File)` call as a camera capture. The results screen is identical regardless of input source.
+- **Platform image picker.** Uses the `image_picker` package to open the device's native gallery picker. No custom gallery UI needed.
+- **Graceful error handling.** If the user cancels the picker, nothing happens (no error, no navigation). If the picked file is invalid or too large, show a plain-language error per §7.3.
+- **File size / format.** Accept JPEG and PNG up to 20 MB. The picker scales photos down to at most 2048px on-device; the final resize to the model's input size happens in `InferenceService` preprocessing.
+- **No double-opens.** The gallery button is disabled while the picker is open or a photo is being taken.
+
+#### Implementation
+
+- **Package:** `image_picker` (add to `pubspec.yaml`)
+- **UI:** gallery button in `CameraControls` (`lib/widgets/camera_controls.dart`), left of the shutter; outlined "Upload a Photo" button on the no-permission screens. The picker is injectable (`CameraScreen.pickFromGallery`) so widget tests can fake the gallery.
+- **Flow:** `image_picker` → `File` → `widget.onScan(file)` — same callback as camera capture, so the entire downstream flow (analyzing screen → results screen → save to history) works identically.
+
+### 7.9 Live Scan Guidance (Camera Screen)
+
+Helps first-time users frame a usable photo before they tap Scan.
+
+- **Scan frame:** corner brackets mark the target area; everything outside the frame is dimmed so the eye goes to the banana.
+- **Single hint pill** centred above the frame (never overlapping it), changing with the scene:
+  - "Point at a banana" — nothing banana-like in the frame yet (white brackets)
+  - "Looks good, tap Scan" — banana in frame, light is fine (green brackets, check icon)
+  - "Too dark, turn on flash" — poor light (amber brackets, flash icon); becomes "Too dark, move to brighter light" when the flash is already on or the phone has none
+  - Every state has its own icon, so colour is never the only cue (§7.4). The pill is a screen-reader live region.
+- **Shutter dims** in poor light to discourage a bad scan, but still works if tapped.
+- **Flash button** toggles the phone's torch. The camera starts with flash **off** (not auto); phones without a flash get a disabled button and a plain message.
+- **How detection works:** a cheap colour/brightness check on the live preview (`lib/services/frame_quality.dart`), sampled about 3× per second and smoothed so the hint doesn't flicker. It is a **hint only — not the model**. The variety/ripeness result always comes from TFLite after Scan. It can be fooled by other yellow-green objects; tune its thresholds during device testing (A22).
 
 ---
 
@@ -432,6 +607,14 @@ final InferenceService inferenceService =
 
 Apply the same trick to local storage (agree on a `ScanRecord` data model shape upfront).
 
+### 9.1 Model ↔ labels contract (learned during A21)
+
+- **The app ships two files together:** `app/assets/model/banana_classifier.tflite` and `app/assets/model/labels.txt`. Line *i* of `labels.txt` names the model's output *i*.
+- **Class order is alphabetical by folder name** (`Cavendish_Overripe, Cavendish_Ripe, Cavendish_Unripe, Cordova_…, Senorita_Unripe`) — the order Keras' `image_dataset_from_directory` uses. `ml/classes.py` `ALL_CLASSES` follows it, and `train.py` / `evaluate.py` pin it with `class_names=`. An earlier variety-first `labels.txt` didn't match the trained model and would have mislabelled most scans; tests in `ml/tests/test_classes.py` and the app's `tflite_inference_service_test.dart` now guard this.
+- **Never reorder `ALL_CLASSES` without retraining.** After any retrain, export with `convert_to_tflite.py` (it writes the matching `labels.txt`) and ship both files together. Every other copy of `labels.txt` (dev backend, Colab/Drive) must be copied from the app's file.
+- **The model is committed to git** via a `.gitignore` exception for that one file (§2.4); all other `.tflite` files stay ignored.
+- **Fallback and demo mode:** `createInferenceService()` loads the real model and falls back to `MockInferenceService` if it can't. In **debug builds** that fallback shows an orange **"DEMO"** ribbon on every screen and logs a warning, so a missing model can't go unnoticed. Release builds never show it.
+
 **The only real sync point** in the entire 8-week timeline is this swap, near the end of the timeline (Week 7 below) — everything else is fully parallel.
 
 ---
@@ -450,6 +633,10 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | A6 | Camera screen — live preview | 1 day | Wk 2 | A5 |
 | A7 | Camera screen — capture button (large, single primary action per §7.1) | 1 day | Wk 2 | A6 |
 | A8 | Results screen — UI layout (variety, ripeness, plain-language confidence per §7.3) | 2 days | Wk 3 | A2, A4 |
+| A25 | Create `BananaInfo`/`RipenessInfo` models + `banana_info_data.dart` per-ripeness data map (§7.6) | 1.5 days | Wk 3 | A2 |
+| A26 | `HealthBenefitsCard` widget — health benefits display (§7.6) | 1 day | Wk 3 | A25 |
+| A27 | `DishSuggestionsCard` widget — ripeness-aware dish suggestions display (§7.6) | 1 day | Wk 3 | A25 |
+| A28 | Wire `HealthBenefitsCard` + `DishSuggestionsCard` into `ResultCard` | 0.5 day | Wk 3 | A8, A26, A27 |
 | A9 | Results screen — wire to `MockInferenceService` | 1 day | Wk 3 | A7, A8 |
 | A10 | "Scan Again" navigation loop | 1 day | Wk 3 | A9 |
 | A11 | Local storage setup (sqflite/Hive) | 1 day | Wk 4 | A3 |
@@ -462,14 +649,24 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | A18 | Widget tests — camera screen | 1 day | Wk 6 | A7 |
 | A19 | Widget tests — results screen | 1 day | Wk 6 | A10 |
 | A20 | Widget tests — history screen | 1 day | Wk 6 | A14 |
+| A29 | Widget tests — `HealthBenefitsCard` + `DishSuggestionsCard` + updated `ResultCard` | 1 day | Wk 6 | A28 |
+| A30 | Onboarding screen — swipeable first-time tutorial (§7.7) | 1.5 days | Wk 6 | A2 |
+| A31 | `PreferencesService` + first-launch flag (`has_completed_onboarding`) | 0.5 day | Wk 6 | A30 |
+| A32 | Wire onboarding into `main.dart` — show on first launch, skip thereafter | 0.5 day | Wk 6 | A31 |
+| A33 | Upload image from gallery — `image_picker` integration on camera screen (§7.8) | 1 day | Wk 6 | A7 |
+| A34 | Widget tests — onboarding screen + upload image button | 1 day | Wk 6 | A30, A33 |
+| A35 | Camera screen — live scan guidance (brackets, hint pill), flash button, gallery · shutter · flash control row (§7.9) | 1 day | Wk 7 | A33 |
 | A21 | **Integration:** swap `MockInferenceService` → real `TFLiteInferenceService` | 1 day | Wk 7 | B13 (Marc Paul) |
-| A22 | Device testing on physical Android phone(s), including outdoor sunlight readability gitcheck (§7.4) | 2 days | Wk 7 | A21 |
+| A22 | Device testing on physical Android phone(s), including outdoor sunlight readability check (§7.4) | 2 days | Wk 7 | A21 |
 | A23 | Bug fixes from device testing | 2 days | Wk 7–8 | A22 |
 | A24 | Final UI/UX pass + buffer | 2 days | Wk 8 | A23 |
 
-**Track A total: ~27 days** (~5.4 weeks of work spread across 8 calendar weeks — built-in slack)
 
-### Track B — Marc Paul (Dataset / Model / ML Layer)
+**Track A total: ~36.5 days** (~7.3 weeks of work spread across 8 calendar weeks — tight but fits with parallel execution during Wk 6)
+
+### Track B — Marc Paul (Dataset / Model / ML Layer + Dev Backend)
+
+> **⚠️ OFFLINE-ONLY RULE:** The shipped app **never** calls the backend at runtime. All classification happens on-device via TFLite. The backend exists **only** as a developer testing tool — it lets Marc Paul batch-test the model with images via `curl`/Postman without building the Flutter app, and ensures the Python preprocessing stays in sync with the Dart preprocessing.
 
 | # | Feature | Est. Time | Week | Depends on |
 |---|---|---|---|---|
@@ -488,11 +685,31 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 | B13 | Implement real `TFLiteInferenceService` in Dart (`tflite_flutter`) matching interface (B3) | 3 days | Wk 6–7 | B12, A4 |
 | B14 | Unit tests — preprocessing pipeline | 1 day | Wk 7 | B6 |
 | B15 | Unit tests — model output sanity checks | 1 day | Wk 7 | B8 |
-| B16 | FastAPI backend skeleton (retraining pipeline, dev-tool only) | 2 days | Wk 7 | B1 |
+| B16 | *(Dev-only)* FastAPI backend skeleton — project setup, CORS, health endpoint, config | 1 day | Wk 7 | B1 |
 | B17 | Document model metrics for the paper (accuracy, precision/recall per class) | 1 day | Wk 8 | B9, B10 |
 | B18 | Final tuning / bug fixes from integration testing | 2 days | Wk 8 | A22 |
+| B19 | *(Dev-only)* `POST /classify` endpoint — batch-test model accuracy with images via curl/Postman | 1.5 days | Wk 7 | B16, B11 |
+| B20 | *(Dev-only)* Shared preprocessing service — same resize/normalize logic as `ml/preprocess.py` (prevents app↔model drift) | 1 day | Wk 7 | B6, B16 |
+| B21 | *(Dev-only)* Pydantic schemas mirroring the app's `ClassificationResult` (variety, ripeness, confidence) | 0.5 day | Wk 7 | B3, B16 |
+| B23 | *(Dev-only)* Image upload validation — file type check, max size, resize before inference | 0.5 day | Wk 7 | B19 |
+| B24 | *(Dev-only)* API tests — `/classify` (valid/invalid image, edge cases) + `/health` | 1 day | Wk 8 | B19 |
 
-**Track B total: ~34 days** (~6.8 weeks — this is the longer pole; dataset work drives the timeline)
+**Track B total: ~37 days** (~7.4 weeks — fits within 8 calendar weeks with Wk 7–8 parallel execution)
+
+#### Dev backend purpose (why it exists for an offline app)
+
+The backend is a **developer-only testing tool** that is never shipped, never deployed to production, and never called by the mobile app. It exists to solve two specific problems:
+
+1. **Batch model testing.** Marc Paul can test the model against hundreds of images via `curl -X POST /classify -F image=@banana.jpg` without building or running Flutter every time. This is critical during the tuning phase (B9–B10) when he's iterating rapidly.
+2. **Preprocessing parity.** The Python preprocessing in `backend/app/services/preprocessing.py` mirrors the Dart preprocessing in `TFLiteInferenceService`. If these two drift apart (e.g. different resize dimensions or normalization), the model will give different results during training vs. on-device — a silent, hard-to-debug issue. Having both in the repo makes the contract testable.
+
+| Concern | App (on-device, shipped) | Dev Backend (local-only, never shipped) |
+|---|---|---|
+| **Preprocessing** | Dart resize/normalize in `TFLiteInferenceService` | Python resize/normalize — must match Dart exactly |
+| **Model** | `.tflite` bundled in `assets/model/` | Same `.tflite` loaded by `backend/app/services/inference.py` |
+| **Output shape** | `ClassificationResult(variety, ripeness, confidence)` | Pydantic `ClassificationResponse` — same fields |
+| **Labels** | `assets/model/labels.txt` | `backend/app/config.py` reads the same `labels.txt` |
+| **Network calls** | ❌ **None. Ever.** All inference is on-device. | Only runs on `localhost` during development |
 
 ### Combined Week-by-Week View
 
@@ -500,12 +717,12 @@ Apply the same trick to local storage (agree on a `ScanRecord` data model shape 
 |---|---|---|
 | **1** | Project setup, design tokens, storage + interface definitions | Env setup, define classes, joint interface definition |
 | **2** | Camera screen (permissions, preview, capture) | Dataset sourcing begins |
-| **3** | Results screen + mock wiring, scan-again loop | Dataset sourcing continues, labeling |
+| **3** | Results screen + mock wiring, scan-again loop, per-ripeness banana info data + health benefits/dish widgets (§7.6) | Dataset sourcing continues, labeling |
 | **4** | Local storage, history screen (list + delete) | Preprocessing, train/test split, baseline training starts |
 | **5** | Loading state, error handling, full UI guideline audit | Baseline training finishes, evaluation, tuning begins |
-| **6** | Widget tests (camera, results, history) | Tuning continues, TFLite conversion + validation, Dart integration starts |
-| **7** | **Integration** (swap to real model), device testing incl. outdoor readability, bug fixes | Finish Dart integration, unit tests, FastAPI skeleton |
-| **8** | Final bug fixes, UI/UX polish, buffer | Document metrics, final tuning, buffer |
+| **6** | Widget tests, onboarding screen (§7.7), upload-from-gallery (§7.8), preferences service | Tuning continues, TFLite conversion + validation, Dart integration starts |
+| **7** | **Integration** (swap to real model), device testing incl. outdoor readability, bug fixes | Finish Dart integration, unit tests, dev backend (`/classify` for batch testing + shared preprocessing) |
+| **8** | Final bug fixes, UI/UX polish, buffer | Document metrics, final tuning, dev backend API tests |
 
 ### Why this fits 2 months safely
 
@@ -523,15 +740,15 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 1 — Setup & Contracts
 **Emanuel**
-- [ ] A1 — Flutter project skeleton, folder structure, repo scaffolding
-- [ ] A2 — Design tokens (`design_tokens.dart`) + core themed components per §7
-- [ ] A3 — Define `ScanRecord` model + `StorageService` interface
-- [ ] A4 — (Joint w/ Marc Paul) Define `InferenceService` interface + `MockInferenceService`
+- [x] A1 — Flutter project skeleton, folder structure, repo scaffolding
+- [x] A2 — Design tokens (`design_tokens.dart`) + core themed components per §7
+- [x] A3 — Define `ScanRecord` model + `StorageService` interface
+- [x] A4 — (Joint w/ Marc Paul) Define `InferenceService` interface + `MockInferenceService`
 
 **Marc Paul**
-- [ ] B1 — `ml/` project setup, Python env, `requirements.txt`
-- [ ] B2 — Define target classes (banana varieties × ripeness stages)
-- [ ] B3 — (Joint w/ Emanuel) Define `InferenceService` interface + output shape
+- [x] B1 — `ml/` project setup, Python env, `requirements.txt`
+- [x] B2 — Define target classes (banana varieties × ripeness stages)
+- [x] B3 — (Joint w/ Emanuel) Define `InferenceService` interface + output shape
 - [ ] Start scouting/downloading candidate public datasets (de-risk B4 early, per §10 risk note)
 
 **Rey (monitor)**
@@ -546,12 +763,12 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 2 — Camera & Dataset Sourcing
 **Emanuel**
-- [ ] A5 — Camera screen: permission handling (Android/iOS)
-- [ ] A6 — Camera screen: live preview
-- [ ] A7 — Camera screen: capture button (large, single primary action)
+- [x] A5 — Camera screen: permission handling (Android/iOS)
+- [x] A6 — Camera screen: live preview
+- [x] A7 — Camera screen: capture button (large, single primary action)
 
 **Marc Paul**
-- [ ] B4 — Dataset sourcing (public datasets + own photo collection) — in progress
+- [x] B4 — Dataset sourcing (public datasets + own photo collection) — in progress
 
 **Rey (monitor)**
 - [ ] Review/approve Emanuel's camera-screen PRs against §7 (touch target size, single primary action)
@@ -562,13 +779,17 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 3 — Results Screen & Dataset Labeling
 **Emanuel**
-- [ ] A8 — Results screen: UI layout (variety, ripeness, plain-language confidence per §7.3)
-- [ ] A9 — Results screen: wire to `MockInferenceService`
-- [ ] A10 — "Scan Again" navigation loop
+- [x] A8 — Results screen: UI layout (variety, ripeness, plain-language confidence per §7.3)
+- [x] A25 — Create `BananaInfo` model + `banana_info_data.dart` hardcoded data map (§7.6)
+- [x] A26 — `HealthBenefitsCard` widget: health benefits display (§7.6)
+- [x] A27 — `DishSuggestionsCard` widget: dish suggestions display (§7.6)
+- [x] A28 — Wire health benefits/dish cards into `ResultCard`
+- [x] A9 — Results screen: wire to `MockInferenceService`
+- [x] A10 — "Scan Again" navigation loop
 
 **Marc Paul**
-- [ ] B4 — Dataset sourcing — finishing up
-- [ ] B5 — Dataset labeling & organizing (folder-per-class)
+- [x] B4 — Dataset sourcing — finishing up
+- [x] B5 — Dataset labeling & organizing (folder-per-class)
 
 **Rey (monitor)**
 - [ ] Review Results screen copy against §7.3 (no jargon like "confidence score" exposed to user)
@@ -579,15 +800,15 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 4 — Local Storage, History & Model Training Start
 **Emanuel**
-- [ ] A11 — Local storage setup (sqflite/Hive)
-- [ ] A12 — Save scan result to local storage
-- [ ] A13 — History screen: list past scans (one tap from camera screen)
-- [ ] A14 — History screen: delete/clear record
+- [x] A11 — Local storage setup (sqflite/Hive)
+- [x] A12 — Save scan result to local storage
+- [x] A13 — History screen: list past scans (one tap from camera screen)
+- [x] A14 — History screen: delete/clear record
 
 **Marc Paul**
-- [ ] B6 — Preprocessing pipeline (resize, augment, normalize)
-- [ ] B7 — Train/validation/test split
-- [ ] B8 — Baseline model training (MobileNetV2 transfer learning) — started
+- [x] B6 — Preprocessing pipeline (resize, augment, normalize)
+- [x] B7 — Train/validation/test split
+- [x] B8 — Baseline model training (MobileNetV2 transfer learning) — started
 
 **Rey (monitor)**
 - [ ] Review History screen against §7.1 (must stay one tap away, no nested menus)
@@ -598,14 +819,14 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 5 — Error States, Polish & Model Evaluation
 **Emanuel**
-- [ ] A15 — Loading/"Analyzing..." state UI
-- [ ] A16 — Error handling: plain-language messages per §7.3, large retry button
-- [ ] A17 — Full UI guideline audit (touch targets, contrast, jargon check) against §7
+- [x] A15 — Loading/"Analyzing..." state UI
+- [x] A16 — Error handling: plain-language messages per §7.3, large retry button
+- [x] A17 — Full UI guideline audit (touch targets, contrast, jargon check) against §7
 
 **Marc Paul**
-- [ ] B8 — Baseline model training — finishing up
-- [ ] B9 — Model evaluation (accuracy, confusion matrix)
-- [ ] B10 — Hyperparameter tuning / retraining iterations — started
+- [x] B8 — Baseline model training — finishing up
+- [x] B9 — Model evaluation (accuracy, confusion matrix)
+- [x] B10 — Hyperparameter tuning / retraining iterations — started
 
 **Rey (monitor)**
 - [ ] Sit in on Emanuel's §7 audit pass — sign off before it's marked done
@@ -614,17 +835,23 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ---
 
-### Week 6 — Tests, TFLite Conversion & Dart Integration Start
+### Week 6 — Tests, New Features, TFLite Conversion & Dart Integration Start
 **Emanuel**
-- [ ] A18 — Widget tests: camera screen
-- [ ] A19 — Widget tests: results screen
-- [ ] A20 — Widget tests: history screen
+- [x] A18 — Widget tests: camera screen
+- [x] A19 — Widget tests: results screen
+- [x] A20 — Widget tests: history screen
+- [x] A29 — Widget tests: `HealthBenefitsCard` + `DishSuggestionsCard` + updated `ResultCard` (§7.6)
+- [x] A30 — Onboarding screen: swipeable first-time tutorial with 3–4 pages (§7.7)
+- [x] A31 — `PreferencesService` + first-launch flag (`has_completed_onboarding`)
+- [x] A32 — Wire onboarding into `main.dart` — show on first launch, skip thereafter
+- [x] A33 — Upload image from gallery: `image_picker` integration on camera screen (§7.8)
+- [ ] A34 — Widget tests: onboarding screen + upload image button — *written, on branch `A34`, not merged yet*
 
 **Marc Paul**
-- [ ] B10 — Hyperparameter tuning — finishing up
-- [ ] B11 — Convert final model → TFLite
-- [ ] B12 — Validate TFLite accuracy vs. original model
-- [ ] B13 — Implement real `TFLiteInferenceService` in Dart — started
+- [x] B10 — Hyperparameter tuning — finishing up
+- [x] B11 — Convert final model → TFLite
+- [x] B12 — Validate TFLite accuracy vs. original model
+- [x] B13 — Implement real `TFLiteInferenceService` in Dart — started
 
 **Rey (monitor)**
 - [ ] Confirm coverage threshold (60%) is met across Emanuel's new widget tests
@@ -635,15 +862,20 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 
 ### Week 7 — Integration Week (the one real sync point)
 **Emanuel**
-- [ ] A21 — Integration: swap `MockInferenceService` → real `TFLiteInferenceService`
+- [ ] A21 — Integration: swap `MockInferenceService` → real `TFLiteInferenceService` — *swap + model merged (#92, #93, #95); label-order fix (§9.1) merged (#96, TFLite = Keras on 540 test images, 95%); on-device check pending*
 - [ ] A22 — Device testing on physical Android phone(s), including outdoor sunlight readability check (§7.4)
 - [ ] A23 — Bug fixes from device testing — started
+- [x] A35 — Camera screen: live scan guidance, flash button, gallery · shutter · flash control row (§7.9) — *merged with A33 (#94)*
 
 **Marc Paul**
-- [ ] B13 — Finish Dart `TFLiteInferenceService` integration
-- [ ] B14 — Unit tests: preprocessing pipeline
-- [ ] B15 — Unit tests: model output sanity checks
-- [ ] B16 — FastAPI backend skeleton (retraining pipeline, dev-tool only)
+- [x] B13 — Finish Dart `TFLiteInferenceService` integration
+- [x] B14 — Unit tests: preprocessing pipeline
+- [x] B15 — Unit tests: model output sanity checks
+- [x] B16 — *(Dev-only)* FastAPI backend skeleton: project setup, CORS, health endpoint, config
+- [ ] B19 — *(Dev-only)* `POST /classify` endpoint: batch-test model with images
+- [ ] B20 — *(Dev-only)* Shared preprocessing service: same resize/normalize as `ml/preprocess.py`
+- [ ] B21 — *(Dev-only)* Pydantic schemas mirroring the app's `ClassificationResult`
+- [ ] B23 — *(Dev-only)* Image upload validation: file type check, max size, resize
 
 **Rey (monitor)**
 - [ ] Actively coordinate the mock→real swap — this is the one week both devs truly depend on each other
@@ -658,8 +890,9 @@ Checkboxes for every feature across both tracks, plus Rey's monitoring tasks eac
 - [ ] A24 — Final UI/UX pass + buffer
 
 **Marc Paul**
-- [ ] B17 — Document model metrics for the paper (accuracy, precision/recall per class)
+- [x] B17 — Document model metrics for the paper (accuracy, precision/recall per class)
 - [ ] B18 — Final tuning / bug fixes from integration testing
+- [ ] B24 — *(Dev-only)* API tests: `/classify` + `/health` endpoints
 
 **Rey (monitor)**
 - [ ] Final full-app review against §7 UI rules before considering it demo/submission-ready

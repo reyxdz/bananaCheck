@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/design_tokens.dart';
 
+/// The one main action on a screen: filled botanical green, icon + label
+/// (§7.2), at least 48dp tall (§7.4). Styling comes from the app theme.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     required this.icon,

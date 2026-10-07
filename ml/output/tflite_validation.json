@@ -1,0 +1,11 @@
+{
+  "num_samples": 591,
+  "agreement": 1.0,
+  "agreement_threshold": 0.99,
+  "keras_accuracy": 0.9662,
+  "tflite_accuracy": 0.9662,
+  "accuracy_delta": 0.0,
+  "max_prob_diff": 1.4e-05,
+  "mean_prob_diff": 0.0,
+  "passed": true
+}

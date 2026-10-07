@@ -2,9 +2,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../models/banana_info_data.dart';
 import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
 import 'confidence_indicator.dart';
+import 'section_container.dart';
+import 'dish_suggestions_card.dart';
+import 'health_benefits_card.dart';
+import 'result_headline.dart';
 
 /// Displays the classification result in a rich, card-based layout per §7.2.
 ///
@@ -24,32 +29,6 @@ class ResultCard extends StatelessWidget {
   /// Null in widget tests where no actual file exists.
   final String? imagePath;
 
-  IconData get _ripenessIcon {
-    switch (result.ripeness.toLowerCase()) {
-      case 'unripe':
-        return Icons.hourglass_top_rounded;
-      case 'ripe':
-        return Icons.check_circle_rounded;
-      case 'overripe':
-        return Icons.warning_rounded;
-      default:
-        return Icons.eco_rounded;
-    }
-  }
-
-  Color get _ripenessColor {
-    switch (result.ripeness.toLowerCase()) {
-      case 'unripe':
-        return DesignTokens.ripenessUnripe;
-      case 'ripe':
-        return DesignTokens.ripenessRipe;
-      case 'overripe':
-        return DesignTokens.ripenessOverripe;
-      default:
-        return DesignTokens.primary;
-    }
-  }
-
   String get _vendorRecommendation {
     switch (result.ripeness.toLowerCase()) {
       case 'unripe':
@@ -66,169 +45,99 @@ class ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(DesignTokens.spacingLarge),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Image thumbnail (if available) ──
-            if (imagePath != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: DesignTokens.imageThumbnailSize,
-                  child: Image.file(
-                    File(imagePath!),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: DesignTokens.background,
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          color: DesignTokens.textSecondary,
-                          size: DesignTokens.iconLarge,
-                        ),
-                      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── The scanned photo as the hero ──
+          if (imagePath != null)
+            SizedBox(
+              height: DesignTokens.resultHeroHeight,
+              child: Image.file(
+                File(imagePath!),
+                fit: BoxFit.cover,
+                semanticLabel: 'Your scanned banana',
+                errorBuilder: (_, __, ___) => const ColoredBox(
+                  color: DesignTokens.surfaceMuted,
+                  child: Center(
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: DesignTokens.textSecondary,
+                      size: DesignTokens.iconLarge,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: DesignTokens.spacingLarge),
-            ],
+            ),
 
-            // ── Pill Badges (Variety + Ripeness) ──
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: DesignTokens.spacingSmall,
-              runSpacing: DesignTokens.spacingSmall,
+          Padding(
+            padding: const EdgeInsets.all(DesignTokens.spacingLarge),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: DesignTokens.primaryLight,
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.eco,
-                        color: DesignTokens.primaryDark,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        result.variety,
-                        style: const TextStyle(
-                          color: DesignTokens.primaryDark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                // ── Variety and ripeness side by side, then the ripening scale ──
+                ResultHeadline(
+                  variety: displayVarietyName(result.variety),
+                  ripeness: result.ripeness,
+                ),
+
+                const SizedBox(height: DesignTokens.spacingLarge),
+
+                // ── Plain-language confidence (§7.3) ──
+                SectionContainer(
+                  child: ConfidenceIndicator(confidence: result.confidence),
+                ),
+
+                const SizedBox(height: DesignTokens.spacingSmall + 4),
+
+                // ── Farmer/vendor handling advice ──
+                SectionContainer(
+                  title: 'Handling tip',
+                  icon: Icons.tips_and_updates_outlined,
+                  iconColor: DesignTokens.warning,
+                  background: DesignTokens.accentLight,
+                  child: Text(
+                    _vendorRecommendation,
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _ripenessColor.withOpacity(0.12),
-                    borderRadius:
-                        BorderRadius.circular(DesignTokens.radiusSmall),
-                    border: Border.all(
-                      color: _ripenessColor.withOpacity(0.4),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _ripenessIcon,
-                        color: _ripenessColor,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        result.ripeness,
-                        style: TextStyle(
-                          color: _ripenessColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+
+                // ── Health Benefits & Dish Suggestions ──
+                _buildInfoCards(),
               ],
             ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Variety — Ripeness headline (§7.3) ──
-            Text(
-              '${result.variety} — ${result.ripeness}',
-              style: const TextStyle(
-                fontSize: DesignTokens.resultHeadlineSize,
-                fontWeight: FontWeight.w800,
-                color: DesignTokens.textPrimary,
-                height: 1.2,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Divider ──
-            const Divider(color: DesignTokens.border, height: 1),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Plain-language confidence (§7.3) ──
-            ConfidenceIndicator(confidence: result.confidence),
-
-            const SizedBox(height: DesignTokens.spacingMedium),
-
-            // ── Farmer/Vendor Handling Advice Card ──
-            Container(
-              padding: const EdgeInsets.all(DesignTokens.spacingMedium),
-              decoration: BoxDecoration(
-                color: DesignTokens.background,
-                borderRadius: BorderRadius.circular(DesignTokens.radiusSmall),
-                border: Border.all(color: DesignTokens.border, width: 1),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.tips_and_updates_outlined,
-                    color: DesignTokens.accent,
-                    size: 22,
-                  ),
-                  const SizedBox(width: DesignTokens.spacingSmall),
-                  Expanded(
-                    child: Text(
-                      _vendorRecommendation,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: DesignTokens.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  /// Builds [HealthBenefitsCard] and [DishSuggestionsCard] from
+  /// [bananaInfoMap]. Returns an empty [SizedBox] when the variety is not
+  /// found so the layout degrades gracefully.
+  Widget _buildInfoCards() {
+    final info = bananaInfoFor(result.variety);
+    if (info == null) return const SizedBox.shrink();
+
+    final lowerRipeness = result.ripeness.toLowerCase();
+    final ripenessInfo = info.byRipeness[lowerRipeness];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: DesignTokens.spacingSmall + 4),
+        HealthBenefitsCard(info: info, ripeness: lowerRipeness),
+        // Unripe dessert bananas have no dishes — they should ripen first
+        // (the handling tip says so), so skip the card rather than show it
+        // empty.
+        if (ripenessInfo != null &&
+            ripenessInfo.dishSuggestions.isNotEmpty) ...[
+          const SizedBox(height: DesignTokens.spacingSmall + 4),
+          DishSuggestionsCard(ripenessInfo: ripenessInfo),
+        ],
+      ],
     );
   }
 }

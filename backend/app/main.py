@@ -1,14 +1,30 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import health, models, retraining
+from .config import BackendConfig, get_config
+from .routers import classify, health, models, retraining
 
 
-def create_app() -> FastAPI:
+def create_app(config: BackendConfig | None = None) -> FastAPI:
+    config = config or get_config()
     app = FastAPI(
-        title="Banana Classifier Model Management",
-        version="0.1.0",
+        title=config.title,
+        version=config.version,
+    )
+    # Make the active config reachable from request handlers, so an app built
+    # with a custom BackendConfig actually uses it (see get_backend_config).
+    app.state.config = config
+    # Dev-only CORS: the shipped app never calls this backend, so origins are
+    # restricted to local development tools (Swagger UI, browser clients).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(config.cors_allow_origins),
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.include_router(health.router)
+    app.include_router(classify.router)
     app.include_router(models.router, prefix="/api")
     app.include_router(retraining.router, prefix="/api")
     return app

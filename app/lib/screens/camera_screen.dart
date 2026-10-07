@@ -2,10 +2,20 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/frame_quality.dart';
+import '../services/inference_service.dart';
+import '../services/reticle_crop.dart';
 import '../theme/design_tokens.dart';
+import '../widgets/camera_controls.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/scan_overlay.dart';
+import '../widgets/screen_header.dart';
+import '../widgets/secondary_button.dart';
 
 /// Camera permission status as seen by the screen UI.
 ///
@@ -26,16 +36,52 @@ enum CameraPermissionState {
   permanentlyDenied,
 }
 
+/// Opens the device gallery and returns the chosen image, or `null` if the
+/// user backed out without picking anything.
+typedef GalleryPicker = Future<File?> Function();
+
+/// Label for the gallery action.
+const _uploadLabel = 'Upload a Photo';
+
+/// Image types the model pipeline accepts from the gallery (§7.8).
+const _supportedUploadExtensions = {'.jpg', '.jpeg', '.png'};
+
+/// Largest gallery file we will try to analyze.
+const _maxUploadBytes = 20 * 1024 * 1024;
+
+/// Default [GalleryPicker] backed by the platform picker (`image_picker`).
+///
+/// Very large photos are scaled down on-device before we ever read them;
+/// the model's own resize still happens in the inference preprocessing.
+Future<File?> pickImageFromGallery() async {
+  final picked = await ImagePicker().pickImage(
+    source: ImageSource.gallery,
+    maxWidth: 2048,
+    maxHeight: 2048,
+    imageQuality: 90,
+  );
+  return picked == null ? null : File(picked.path);
+}
+
 class CameraScreen extends StatefulWidget {
   const CameraScreen({
     required this.onScan,
     required this.onHistory,
+    this.onAbout,
+    this.pickFromGallery = pickImageFromGallery,
     super.key,
   });
 
-  /// Called with the captured image file when the user taps Scan.
+  /// Called with the image file when the user taps Scan or picks a photo
+  /// with Upload a Photo — both feed the same analysis pipeline (§7.8).
   final ValueChanged<File> onScan;
   final VoidCallback onHistory;
+
+  /// Opens the About page when the logo is tapped.
+  final VoidCallback? onAbout;
+
+  /// Injectable so widget tests can fake the platform gallery.
+  final GalleryPicker pickFromGallery;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -61,6 +107,27 @@ class _CameraScreenState extends State<CameraScreen>
   /// `true` briefly during the shutter flash animation.
   bool _showShutterFlash = false;
 
+  /// `true` while the gallery picker is open — prevents double-taps.
+  bool _isPicking = false;
+
+  // ─────────────────────── live hints & flash ──────────────────────────
+  /// How often a preview frame is measured for the on-screen hint.
+  static const _frameInterval = Duration(milliseconds: 300);
+
+  final _conditionTracker = ScanConditionTracker();
+  ScanCondition _condition = ScanCondition.searching;
+  DateTime _lastFrameAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Measures the preview box so a capture can be cropped to the reticle the
+  /// user actually framed their banana in.
+  final _previewKey = GlobalKey();
+
+  /// Torch (continuous flash) state. Reset whenever the camera restarts.
+  bool _torchOn = false;
+
+  /// Cleared once the camera refuses a flash mode (e.g. no flash unit).
+  bool _hasTorch = true;
+
   // ───────────────────────────── lifecycle ──────────────────────────────
 
   @override
@@ -84,8 +151,12 @@ class _CameraScreenState extends State<CameraScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       // Release the camera so other apps (or the OS settings screen) can
-      // use it.
-      _disposeCamera();
+      // use it. Rebuild too, so the preview never paints a disposed camera.
+      if (mounted) {
+        setState(_disposeCamera);
+      } else {
+        _disposeCamera();
+      }
     } else if (state == AppLifecycleState.resumed) {
       if (_permissionState == CameraPermissionState.permanentlyDenied ||
           _permissionState == CameraPermissionState.denied) {
@@ -162,6 +233,8 @@ class _CameraScreenState extends State<CameraScreen>
         // devices common with our target users.
         ResolutionPreset.medium,
         enableAudio: false,
+        // YUV lets the live hint read brightness/colour without decoding.
+        imageFormatGroup: ImageFormatGroup.yuv420,
       );
 
       await controller.initialize();
@@ -171,10 +244,25 @@ class _CameraScreenState extends State<CameraScreen>
         return;
       }
 
+      // Start with the flash off so it only fires when the user asks for it
+      // (the plugin defaults to auto). A camera without a flash throws here.
+      var hasTorch = true;
+      try {
+        await controller.setFlashMode(FlashMode.off);
+      } catch (_) {
+        hasTorch = false;
+      }
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+
       setState(() {
         _cameraController = controller;
         _cameraError = null;
+        _hasTorch = hasTorch;
       });
+      _startFrameAnalysis(controller);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -200,6 +288,9 @@ class _CameraScreenState extends State<CameraScreen>
     setState(() => _isCapturing = true);
 
     try {
+      // Pause the hint stream so it can't compete with the capture.
+      await _stopFrameAnalysis(controller);
+
       // Brief shutter flash for tactile feedback.
       setState(() => _showShutterFlash = true);
       await Future<void>.delayed(const Duration(milliseconds: 120));
@@ -210,26 +301,213 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (!mounted) return;
 
+      // The overlay dims everything outside the reticle, so the user frames the
+      // banana inside it. Send the model that same region: the full frame is
+      // mostly background, and the classifier is trained on a banana that fills
+      // the picture — it reads a distant banana on a busy desk as NotBanana.
+      final scanFile = await _cropToReticle(capturedFile) ?? capturedFile;
+
+      if (!mounted) return;
+
       // Hand off to the scan callback — result screen appears per §7.1.
-      widget.onScan(capturedFile);
+      widget.onScan(scanFile);
     } catch (e) {
       if (!mounted) return;
       // Plain-language error per §7.3.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Could not take the photo — please try again.',
+            'Could not take the photo. Please try again.',
           ),
         ),
       );
     } finally {
-      if (mounted) setState(() => _isCapturing = false);
+      if (mounted) {
+        setState(() => _isCapturing = false);
+        // Resume hints for when the user comes back to this screen.
+        if (_cameraController == controller) _startFrameAnalysis(controller);
+      }
     }
+  }
+
+  /// Crops [capturedFile] down to the part of the frame the scan reticle was
+  /// covering, writing the result beside the original.
+  ///
+  /// Returns `null` whenever the crop cannot be worked out — an unmeasured
+  /// preview, an undecodable photo, a reticle that maps to nothing, or a failed
+  /// write. The caller then falls back to the full photo, which is the old
+  /// behaviour: a worse scan, but never a broken one.
+  Future<File?> _cropToReticle(File capturedFile) async {
+    try {
+      final previewSize = _previewKey.currentContext?.size;
+      if (previewSize == null) return null;
+
+      final decoded = decodeUprightImage(await capturedFile.readAsBytes());
+      if (decoded == null) return null;
+
+      final crop = imageCropForReticle(
+        previewSize: previewSize,
+        reticle: ScanOverlay.frameFor(previewSize),
+        imageWidth: decoded.width,
+        imageHeight: decoded.height,
+      );
+      if (crop == null) return null;
+
+      final cropped = img.copyCrop(
+        decoded,
+        x: crop.left.round(),
+        y: crop.top.round(),
+        width: crop.width.round(),
+        height: crop.height.round(),
+      );
+
+      final target = File('${capturedFile.path}.scan.jpg');
+      await target.writeAsBytes(img.encodeJpg(cropped, quality: 95));
+      return target;
+    } catch (_) {
+      // Any failure here just means scanning the whole photo instead.
+      return null;
+    }
+  }
+
+  /// Toggles the torch so dark scenes can still be scanned.
+  Future<void> _toggleFlash() async {
+    final controller = _cameraController;
+    if (controller == null) return;
+
+    final turnOn = !_torchOn;
+    try {
+      await controller.setFlashMode(turnOn ? FlashMode.torch : FlashMode.off);
+      if (!mounted) return;
+      setState(() => _torchOn = turnOn);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _hasTorch = false;
+        _torchOn = false;
+      });
+      _showMessage("This phone's flash can't be used. Try brighter light.");
+    }
+  }
+
+  // ──────────────────────── live frame hints ─────────────────────────────
+
+  Future<void> _startFrameAnalysis(CameraController controller) async {
+    if (controller.value.isStreamingImages) return;
+    try {
+      await controller.startImageStream(_onFrame);
+    } catch (_) {
+      // Some devices can't stream while previewing — the hint simply stays
+      // on "Point at a banana" and scanning still works.
+    }
+  }
+
+  Future<void> _stopFrameAnalysis(CameraController controller) async {
+    if (!controller.value.isStreamingImages) return;
+    try {
+      await controller.stopImageStream();
+    } catch (_) {
+      // Already stopped.
+    }
+  }
+
+  void _onFrame(CameraImage image) {
+    final now = DateTime.now();
+    if (now.difference(_lastFrameAt) < _frameInterval) return;
+    _lastFrameAt = now;
+
+    final stats = _statsFor(image);
+    if (stats == null || !mounted) return;
+    final condition = _conditionTracker.update(stats);
+    if (condition != _condition) setState(() => _condition = condition);
+  }
+
+  /// Reads brightness and banana-colour coverage from a YUV preview frame.
+  FrameStats? _statsFor(CameraImage image) {
+    if (image.format.group != ImageFormatGroup.yuv420) return null;
+    final planes = image.planes;
+
+    try {
+      if (planes.length >= 3) {
+        // Android: separate Y, U and V planes (U/V may be interleaved).
+        return analyzeYuvFrame(
+          width: image.width,
+          height: image.height,
+          y: planes[0].bytes,
+          yRowStride: planes[0].bytesPerRow,
+          u: planes[1].bytes,
+          v: planes[2].bytes,
+          uvRowStride: planes[1].bytesPerRow,
+          uvPixelStride: planes[1].bytesPerPixel ?? 1,
+        );
+      }
+      if (planes.length == 2) {
+        // iOS NV12: Y plane, then one interleaved CbCr plane.
+        return analyzeYuvFrame(
+          width: image.width,
+          height: image.height,
+          y: planes[0].bytes,
+          yRowStride: planes[0].bytesPerRow,
+          u: planes[1].bytes,
+          v: planes[1].bytes,
+          uvRowStride: planes[1].bytesPerRow,
+          uvPixelStride: 2,
+          vOffset: 1,
+        );
+      }
+    } on RangeError {
+      // Unexpected plane padding — skip this frame.
+    }
+    return null;
+  }
+
+  /// Lets the user pick an existing photo instead of taking one (§7.8).
+  ///
+  /// Cancelling the picker does nothing. Unsupported or oversized files get a
+  /// plain-language message (§7.3); valid ones go to [widget.onScan] exactly
+  /// like a camera capture.
+  Future<void> _uploadPhoto() async {
+    if (_isPicking || _isCapturing) return;
+    setState(() => _isPicking = true);
+
+    try {
+      final file = await widget.pickFromGallery();
+      if (!mounted || file == null) return;
+
+      final name = file.path.toLowerCase();
+      final supported = _supportedUploadExtensions.any(name.endsWith);
+      if (!supported || await file.length() > _maxUploadBytes) {
+        if (!mounted) return;
+        _showMessage(
+          "This photo can't be used. Please pick a clear JPG or PNG photo "
+          'of a banana.',
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      widget.onScan(file);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Could not open that photo. Please try another one.');
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   void _disposeCamera() {
     _cameraController?.dispose();
     _cameraController = null;
+    // A fresh camera starts with the torch off and no hint history.
+    _torchOn = false;
+    _conditionTracker.reset();
+    _condition = ScanCondition.searching;
   }
 
   // ─────────────────────────── build ───────────────────────────────────
@@ -244,80 +522,29 @@ class _CameraScreenState extends State<CameraScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // ── Enhanced top bar (Logo + Title + History) ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                DesignTokens.spacingLarge,
-                DesignTokens.spacingMedium,
-                DesignTokens.spacingLarge,
-                DesignTokens.spacingSmall,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Logo + App Name
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(DesignTokens.radiusSmall),
-                        child: Image.asset(
-                          'assets/images/logo.png',
-                          width: DesignTokens.logoSmall,
-                          height: DesignTokens.logoSmall,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                            Icons.center_focus_strong,
-                            color: DesignTokens.primary,
-                            size: DesignTokens.logoSmall,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: DesignTokens.spacingSmall),
-                      Text(
-                        'Bananalyze',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: DesignTokens.primaryDark,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                      ),
-                    ],
+            // ── Brand header + History (icon-only, tooltip = label) ──
+            ScreenHeader.brand(
+              onBrandTap: widget.onAbout,
+              actions: [
+                IconButton(
+                  onPressed: widget.onHistory,
+                  tooltip: 'History',
+                  iconSize: DesignTokens.iconMedium,
+                  color: DesignTokens.textSecondary,
+                  constraints: const BoxConstraints(
+                    minWidth: DesignTokens.minimumTouchTarget,
+                    minHeight: DesignTokens.minimumTouchTarget,
                   ),
-                  // Styled History Button
-                  Container(
-                    decoration: BoxDecoration(
-                      color: DesignTokens.primaryLight,
-                      borderRadius:
-                          BorderRadius.circular(DesignTokens.radiusLarge),
-                    ),
-                    child: TextButton.icon(
-                      onPressed: widget.onHistory,
-                      icon: const Icon(
-                        Icons.history_rounded,
-                        color: DesignTokens.primaryDark,
-                        size: 20,
-                      ),
-                      label: const Text(
-                        'History',
-                        style: TextStyle(
-                          color: DesignTokens.primaryDark,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                  icon: const Icon(Icons.history_rounded),
+                ),
+              ],
             ),
-            const SizedBox(height: DesignTokens.spacingSmall),
 
             // ── main area — depends on permission state ──
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: DesignTokens.spacingLarge,
+                  horizontal: DesignTokens.spacingMedium,
                 ),
                 child: _buildBody(),
               ),
@@ -325,17 +552,8 @@ class _CameraScreenState extends State<CameraScreen>
 
             const SizedBox(height: DesignTokens.spacingMedium),
 
-            // ── capture button — large, single primary action per §7.1/§7.4 ──
-            if (_permissionState == CameraPermissionState.granted)
-              Padding(
-                padding: const EdgeInsets.only(
-                  bottom: DesignTokens.spacingLarge,
-                ),
-                child: _CaptureButton(
-                  onPressed: cameraReady ? _capturePhoto : null,
-                  isCapturing: _isCapturing,
-                ),
-              ),
+            // ── bottom actions, in the thumb zone ──
+            ..._buildActions(cameraReady),
           ],
         ),
       ),
@@ -346,10 +564,54 @@ class _CameraScreenState extends State<CameraScreen>
     return switch (_permissionState) {
       CameraPermissionState.checking => const _CheckingIndicator(),
       CameraPermissionState.granted => _buildCameraArea(),
-      CameraPermissionState.denied => _PermissionDeniedView(
-          onAllow: _requestPermission,
-        ),
+      CameraPermissionState.denied => const _PermissionDeniedView(),
       CameraPermissionState.permanentlyDenied => const _PermissionBlockedView(),
+    };
+  }
+
+  /// With camera access: gallery · shutter · flash. Without it: a filled
+  /// primary action (fix the camera) with an outlined "Upload a Photo" right
+  /// below it — upload works either way per §7.8.
+  List<Widget> _buildActions(bool cameraReady) {
+    final onUpload = _isPicking || _isCapturing ? null : _uploadPhoto;
+
+    return switch (_permissionState) {
+      CameraPermissionState.checking => const [],
+      // Shutter stays the single primary action (§7.1/§7.4); gallery still
+      // works when the camera itself fails to start.
+      CameraPermissionState.granted => [
+          Padding(
+            padding: const EdgeInsets.only(bottom: DesignTokens.spacingLarge),
+            child: CameraControls(
+              onGallery: onUpload,
+              onShutter: cameraReady ? _capturePhoto : null,
+              onFlash: cameraReady && _hasTorch && !_isCapturing
+                  ? _toggleFlash
+                  : null,
+              flashOn: _torchOn,
+              isCapturing: _isCapturing,
+              shutterDimmed: _condition == ScanCondition.tooDark,
+              // No banana for a while → point at the upload fallback.
+              highlightGallery: _condition == ScanCondition.notFound,
+            ),
+          ),
+        ],
+      CameraPermissionState.denied => [
+          _PermissionActions(
+            primaryIcon: Icons.camera_alt,
+            primaryLabel: 'Allow Camera',
+            onPrimary: _requestPermission,
+            onUpload: onUpload,
+          ),
+        ],
+      CameraPermissionState.permanentlyDenied => [
+          _PermissionActions(
+            primaryIcon: Icons.settings,
+            primaryLabel: 'Open Settings',
+            onPrimary: openAppSettings,
+            onUpload: onUpload,
+          ),
+        ],
     };
   }
 
@@ -369,10 +631,16 @@ class _CameraScreenState extends State<CameraScreen>
       return const _CheckingIndicator();
     }
 
-    // Live preview with hint overlay + target reticle + optional shutter flash.
+    // Live preview with scan frame, live hint + optional shutter flash.
     return _LivePreview(
+      key: _previewKey,
       controller: controller,
       showShutterFlash: _showShutterFlash,
+      overlay: ScanOverlay(
+        condition: _condition,
+        torchOn: _torchOn,
+        hasTorch: _hasTorch,
+      ),
     );
   }
 }
@@ -395,20 +663,23 @@ class _CheckingIndicator extends StatelessWidget {
   }
 }
 
-/// Live camera preview with target scanning reticle frame, hint overlay, and shutter flash.
+/// Live camera preview with the scan overlay and shutter flash on top.
 class _LivePreview extends StatelessWidget {
   const _LivePreview({
     required this.controller,
+    required this.overlay,
     this.showShutterFlash = false,
+    super.key,
   });
 
   final CameraController controller;
+  final Widget overlay;
   final bool showShutterFlash;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
+      borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -425,87 +696,12 @@ class _LivePreview extends StatelessWidget {
             ),
           ),
 
-          // Center target reticle frame to help farmers align the banana
-          Center(
-            child: Container(
-              width: 250,
-              height: 330,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(DesignTokens.radiusMedium),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.85),
-                  width: 2.5,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: DesignTokens.primaryDark.withOpacity(0.6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.center_focus_weak,
-                        color: DesignTokens.accent,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Hint overlay at the bottom — sits on top of the live feed.
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0x7D000000)],
-                ),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: DesignTokens.spacingLarge,
-                vertical: DesignTokens.spacingMedium,
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.center_focus_strong,
-                    color: DesignTokens.accent,
-                    size: 20,
-                  ),
-                  SizedBox(width: DesignTokens.spacingSmall),
-                  Expanded(
-                    child: Text(
-                      'Center banana in frame and tap Scan.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: DesignTokens.bodyTextSize,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          overlay,
 
           // Shutter flash — white overlay that appears briefly on capture.
           if (showShutterFlash)
-            const Positioned.fill(
-              child: ColoredBox(color: Colors.white70),
+            Positioned.fill(
+              child: ColoredBox(color: DesignTokens.onCamera.withOpacity(0.7)),
             ),
         ],
       ),
@@ -513,97 +709,54 @@ class _LivePreview extends StatelessWidget {
   }
 }
 
-/// The large, circular capture button — the single primary action on the
-/// camera screen per §7.1.
-///
-/// Sizing: 80dp outer diameter (exceeds the 64dp minimum from §7.4), centred,
-/// high-contrast primary-green fill with a white camera icon + label.
-class _CaptureButton extends StatelessWidget {
-  const _CaptureButton({
-    required this.onPressed,
-    this.isCapturing = false,
+/// Bottom action pair shown when the camera can't be used: a full-width
+/// filled primary button with an outlined upload button directly below.
+class _PermissionActions extends StatelessWidget {
+  const _PermissionActions({
+    required this.primaryIcon,
+    required this.primaryLabel,
+    required this.onPrimary,
+    required this.onUpload,
   });
 
-  final VoidCallback? onPressed;
-  final bool isCapturing;
-
-  /// Diameter of the outer ring — exceeds §7.4 minimum of 64dp.
-  static const double _outerSize = 80;
-
-  /// Diameter of the filled inner circle.
-  static const double _innerSize = 68;
+  final IconData primaryIcon;
+  final String primaryLabel;
+  final VoidCallback onPrimary;
+  final VoidCallback? onUpload;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Semantics(
-          button: true,
-          label: 'Scan',
-          child: GestureDetector(
-            onTap: onPressed,
-            child: SizedBox(
-              width: _outerSize,
-              height: _outerSize,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: DesignTokens.primary,
-                    width: 3,
-                  ),
-                ),
-                child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 100),
-                    width: isCapturing ? _innerSize - 8 : _innerSize,
-                    height: isCapturing ? _innerSize - 8 : _innerSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isCapturing
-                          ? DesignTokens.primaryDark
-                          : DesignTokens.primary,
-                      boxShadow: const [
-                        BoxShadow(
-                          color: DesignTokens.shadow,
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: isCapturing
-                        ? const Padding(
-                            padding: EdgeInsets.all(18),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.camera_alt_rounded,
-                            color: Colors.white,
-                            size: DesignTokens.iconMedium,
-                          ),
-                  ),
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        DesignTokens.spacingMedium,
+        0,
+        DesignTokens.spacingMedium,
+        DesignTokens.spacingMedium,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: DesignTokens.primaryActionSize,
+            child: PrimaryButton(
+              icon: primaryIcon,
+              label: primaryLabel,
+              onPressed: onPrimary,
             ),
           ),
-        ),
-        const SizedBox(height: DesignTokens.spacingSmall),
-        // Per §7.2: always pair icon with a plain-language label.
-        Text(
-          'Scan',
-          style: TextStyle(
-            fontSize: DesignTokens.bodyTextSize,
-            fontWeight: FontWeight.w700,
-            color: isCapturing
-                ? DesignTokens.textSecondary
-                : DesignTokens.textPrimary,
+          const SizedBox(height: DesignTokens.spacingSmall),
+          SizedBox(
+            width: double.infinity,
+            height: DesignTokens.secondaryActionSize,
+            child: SecondaryButton(
+              icon: Icons.photo_library_outlined,
+              label: _uploadLabel,
+              onPressed: onUpload,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -620,36 +773,19 @@ class _CameraErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.spacingLarge,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: DesignTokens.textSecondary,
-              size: DesignTokens.iconLarge,
-            ),
-            const SizedBox(height: DesignTokens.spacingLarge),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.titleMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-            SizedBox(
-              width: double.infinity,
-              height: DesignTokens.primaryActionSize,
-              child: PrimaryButton(
-                icon: Icons.refresh,
-                label: 'Try Again',
-                onPressed: onRetry,
-              ),
-            ),
-          ],
+    return EmptyState(
+      icon: Icons.error_outline,
+      iconColor: DesignTokens.error,
+      iconBackground: DesignTokens.errorBackground,
+      title: message,
+      message: 'Close any other app using the camera, then try again, '
+          'or upload a photo instead.',
+      primaryAction: SizedBox(
+        height: DesignTokens.primaryActionSize,
+        child: PrimaryButton(
+          icon: Icons.refresh,
+          label: 'Try Again',
+          onPressed: onRetry,
         ),
       ),
     );
@@ -658,57 +794,21 @@ class _CameraErrorView extends StatelessWidget {
 
 /// Shown when the user tapped "Deny" but can still be asked again.
 class _PermissionDeniedView extends StatelessWidget {
-  const _PermissionDeniedView({required this.onAllow});
-
-  final VoidCallback onAllow;
+  const _PermissionDeniedView();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.spacingLarge,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Mascot — shifted down so it overlaps the text card below.
-            Transform.translate(
-              offset: const Offset(0, 24),
-              child: SizedBox(
-                width: 200,
-                height: 200,
-                child: Image.asset(
-                  'assets/images/banana_mascot.gif',
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-            // Text + button card that the mascot "sits on"
-            Text(
-              'Camera access needed',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DesignTokens.spacingSmall),
-            const Text(
-              'To analyze your bananas, Bananalyze needs to use your camera.\n'
-              'Tap the button below to allow access.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-            SizedBox(
-              width: double.infinity,
-              height: DesignTokens.primaryActionSize,
-              child: PrimaryButton(
-                icon: Icons.camera_alt,
-                label: 'Allow Camera',
-                onPressed: onAllow,
-              ),
-            ),
-          ],
-        ),
+    return EmptyState(
+      illustration: Image.asset(
+        'assets/images/banana_mascot.gif',
+        width: DesignTokens.mascotSize,
+        height: DesignTokens.mascotSize,
+        fit: BoxFit.contain,
+        excludeFromSemantics: true,
       ),
+      title: 'Camera access needed',
+      message: 'To analyze your bananas, Bananalyze needs to use your camera.\n'
+          'Tap the button below to allow access.',
     );
   }
 }
@@ -720,45 +820,14 @@ class _PermissionBlockedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: DesignTokens.spacingLarge,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.no_photography_outlined,
-              color: DesignTokens.textSecondary,
-              size: DesignTokens.iconLarge,
-            ),
-            const SizedBox(height: DesignTokens.spacingLarge),
-            Text(
-              'Camera is turned off',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DesignTokens.spacingSmall),
-            const Text(
-              'You previously turned off camera access.\n'
-              'Open your phone\'s Settings and turn it back on '
-              'so Bananalyze can inspect your bananas.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: DesignTokens.spacingExtraLarge),
-            const SizedBox(
-              width: double.infinity,
-              height: DesignTokens.primaryActionSize,
-              child: PrimaryButton(
-                icon: Icons.settings,
-                label: 'Open Settings',
-                onPressed: openAppSettings,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const EmptyState(
+      icon: Icons.no_photography_outlined,
+      iconColor: DesignTokens.textSecondary,
+      iconBackground: DesignTokens.surfaceMuted,
+      title: 'Camera is turned off',
+      message: 'You previously turned off camera access.\n'
+          "Open your phone's Settings and turn it back on "
+          'so Bananalyze can inspect your bananas.',
     );
   }
 }
