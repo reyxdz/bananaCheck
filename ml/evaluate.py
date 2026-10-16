@@ -153,6 +153,10 @@ def load_test_dataset(
         # line up with the model's trained output indices and labels.txt.
         class_names=[banana_class.folder_name for banana_class in ALL_CLASSES],
         shuffle=False,
+        # Must match ml.train.load_datasets: centre-crop to 1:1 before resizing,
+        # mirroring the app's reticle crop. ml.validate_tflite reuses this
+        # loader, so the TFLite check stays on the same preprocessing too.
+        crop_to_aspect_ratio=True,
     )
 
     # Capture class_names before .map()/.prefetch() strip the attribute.

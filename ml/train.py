@@ -140,18 +140,33 @@ class TrainingConfig:
 # ---------------------------------------------------------------------------
 
 
+#: Name of the frozen MobileNetV2 base layer, so callers can find it by name
+#: rather than by index — the index moves when augmentation is toggled.
+BASE_MODEL_NAME = "mobilenetv2_base"
+
+#: How far random lighting augmentation may shift an image, as a fraction.
+#:
+#: ``0.25`` spans indoor shade through bright window light, which is the range
+#: users actually shoot in. Pushing it further starts teaching the model that a
+#: dim yellow banana and a dark green one look alike, and ripeness *is* a colour
+#: judgement — so this trades robustness against the one cue we cannot blur.
+LIGHTING_FACTOR = 0.25
+
+
 def build_model(
     num_classes: int = NUM_CLASSES,
     *,
     image_width: int = _DEFAULT_ML.image_width,
     image_height: int = _DEFAULT_ML.image_height,
     dropout_rate: float = 0.2,
+    augment_lighting: bool = True,
 ) -> tf.keras.Model:
     """Build a MobileNetV2 transfer-learning model.
 
     Architecture::
 
         Input (image_height, image_width, 3)
+        → RandomBrightness + RandomContrast   (training only)
         → MobileNetV2 base (frozen, no top)
         → GlobalAveragePooling2D
         → Dropout
@@ -165,12 +180,35 @@ def build_model(
         Spatial input dimensions.
     dropout_rate:
         Dropout probability before the classification head.
+    augment_lighting:
+        Re-light every image randomly during training (default: ``True``). See
+        the note on augmentation below for why this lives in the model.
 
     Returns
     -------
     tf.keras.Model
         Compiled model is **not** returned — callers should compile with
         their own optimizer/loss after calling this function.
+
+    Notes
+    -----
+    **Why the augmentation is a model layer, not a dataset ``map``.**
+
+    Keras preprocessing layers are inactive whenever ``training=False``, which
+    is every inference path: ``model.predict``, evaluation, and the TFLite
+    export. Putting them inside the model therefore makes it structurally
+    impossible for augmentation to leak into on-device preprocessing — the
+    separation :mod:`ml.preprocess` documents as a requirement. A dataset
+    ``map`` would have to be remembered and omitted at eval time by hand.
+
+    Being a layer also means each image is re-lit *differently every epoch*,
+    rather than once up front, so the model sees one banana under as many
+    exposures as there are epochs without storing a single extra file.
+
+    Only lighting is randomised. Flips and rotations are deliberately left out:
+    the Lakatan/Latundan boundary rests on finger shape, and the matched
+    centre-crop in :func:`prepare_datasets` exists precisely to keep that shape
+    faithful to what the camera reticle produces.
     """
     if num_classes < 2:
         raise ValueError("num_classes must be at least 2.")
@@ -181,11 +219,28 @@ def build_model(
         input_shape=input_shape,
         include_top=False,
         weights="imagenet",
+        name=BASE_MODEL_NAME,
     )
     base_model.trainable = False
 
     inputs = tf.keras.Input(shape=input_shape)
-    x = base_model(inputs, training=False)
+
+    x = inputs
+    if augment_lighting:
+        # ``value_range`` must be [0, 1]: ``prepare_datasets`` rescales before
+        # the model, so the default (0, 255) would mis-scale every shift.
+        x = tf.keras.layers.RandomBrightness(
+            LIGHTING_FACTOR,
+            value_range=(0.0, 1.0),
+            name="random_brightness",
+        )(x)
+        x = tf.keras.layers.RandomContrast(
+            LIGHTING_FACTOR,
+            value_range=(0.0, 1.0),
+            name="random_contrast",
+        )(x)
+
+    x = base_model(x, training=False)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.Dropout(dropout_rate)(x)
     outputs = tf.keras.layers.Dense(num_classes, activation="softmax")(x)
@@ -225,6 +280,11 @@ def load_datasets(
     # the shipped labels.txt.
     class_names = [banana_class.folder_name for banana_class in ALL_CLASSES]
 
+    # ``crop_to_aspect_ratio`` centre-crops to the target 1:1 aspect before
+    # resizing, which is exactly what the app does to the camera reticle.
+    # Without it the loader squashes whole 4:3 and 3:4 photos into a square,
+    # distorting finger length — the cue that separates Lakatan from Latundan —
+    # and leaving training and on-device inference measuring different shapes.
     train_ds = tf.keras.utils.image_dataset_from_directory(
         train_dir,
         image_size=config.image_size,
@@ -233,6 +293,7 @@ def load_datasets(
         class_names=class_names,
         shuffle=True,
         seed=42,
+        crop_to_aspect_ratio=True,
     )
     val_ds = tf.keras.utils.image_dataset_from_directory(
         val_dir,
@@ -241,6 +302,7 @@ def load_datasets(
         label_mode="int",
         class_names=class_names,
         shuffle=False,
+        crop_to_aspect_ratio=True,
     )
 
     # Rescale pixel values to [0, 1] to match the preprocessing contract.
@@ -309,7 +371,9 @@ def train(
 
     # ---- Phase 2: Fine-tuning (optional) ----
     if config.fine_tune_epochs > 0:
-        base_model = model.layers[1]  # MobileNetV2 functional layer
+        # By name, not index: the lighting augmentation layers sit between the
+        # input and the base, so `layers[1]` is RandomBrightness.
+        base_model = model.get_layer(BASE_MODEL_NAME)
         base_model.trainable = True
 
         # Freeze all layers except the top `fine_tune_layers`.
