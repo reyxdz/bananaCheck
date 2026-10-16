@@ -1,4 +1,5 @@
 import 'package:banana_classifier/models/classification_result.dart';
+import 'package:banana_classifier/theme/design_tokens.dart';
 import 'package:banana_classifier/widgets/result_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -317,5 +318,86 @@ void main() {
         expect(find.text('Health Benefits'), findsOneWidget);
       });
     }
+  });
+
+  group('ResultCard photo', () {
+    final result = ClassificationResult(
+      variety: 'Cordova',
+      ripeness: 'Ripe',
+      confidence: 0.95,
+    );
+
+    Future<void> pump(WidgetTester tester) => tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ResultCard(
+                  result: result,
+                  imagePath: 'test/fixtures/fake_image.jpg',
+                ),
+              ),
+            ),
+          ),
+        );
+
+    Finder frame() => find.byKey(const ValueKey('scan-photo-frame'));
+
+    testWidgets('sits in its own frame, outside the results card',
+        (tester) async {
+      await pump(tester);
+      expect(frame(), findsOneWidget);
+      expect(
+        find.ancestor(of: frame(), matching: find.byType(Card)),
+        findsNothing,
+      );
+      // The results card is still there, below the photo.
+      expect(find.byType(Card), findsWidgets);
+      expect(
+        tester.getTopLeft(find.byType(Card).first).dy,
+        greaterThan(tester.getBottomLeft(frame()).dy),
+      );
+    });
+
+    testWidgets('frame has square corners', (tester) async {
+      await pump(tester);
+      final decoration =
+          tester.widget<Container>(frame()).decoration! as BoxDecoration;
+      expect(decoration.borderRadius, isNull);
+    });
+
+    testWidgets('photo is shown whole, never cropped', (tester) async {
+      await pump(tester);
+      final image = tester.widget<Image>(
+        find.descendant(of: frame(), matching: find.byType(Image)),
+      );
+      expect(image.fit, BoxFit.contain);
+    });
+
+    testWidgets('holds the full width until the photo has loaded',
+        (tester) async {
+      await pump(tester);
+      final size = tester.getSize(frame());
+      expect(size.height, DesignTokens.resultHeroMinHeight);
+      expect(size.width, tester.getSize(find.byType(ResultCard)).width);
+    });
+  });
+
+  group('fitPhotoSize', () {
+    test('a wide photo fills the width', () {
+      final size = fitPhotoSize(aspectRatio: 2, maxWidth: 360, maxHeight: 480);
+      expect(size, const Size(360, 180));
+    });
+
+    test('a 3:4 portrait fills the width when it fits the max height', () {
+      final size =
+          fitPhotoSize(aspectRatio: 0.75, maxWidth: 330, maxHeight: 480);
+      expect(size, const Size(330, 440));
+    });
+
+    test('a tall photo is capped at the max height and keeps its shape', () {
+      final size =
+          fitPhotoSize(aspectRatio: 0.5, maxWidth: 360, maxHeight: 480);
+      expect(size, const Size(240, 480));
+    });
   });
 }

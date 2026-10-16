@@ -7,6 +7,7 @@ import 'package:banana_classifier/models/scan_record.dart';
 import 'package:banana_classifier/screens/analyzing_screen.dart';
 import 'package:banana_classifier/services/inference_service.dart';
 import 'package:banana_classifier/services/storage_service.dart';
+import 'package:banana_classifier/theme/design_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -485,6 +486,61 @@ void main() {
         await tester.pump(const Duration(milliseconds: 600));
         expect(find.text('Try Again'), findsOneWidget);
       });
+    });
+  });
+
+  group('AnalyzingScreen photo', () {
+    Future<void> pump(WidgetTester tester, {bool reduceMotion = false}) =>
+        tester.pumpWidget(
+          MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(disableAnimations: reduceMotion),
+              child: AnalyzingScreen(
+                minimumDisplayDuration: Duration.zero,
+                inferenceService: _NeverEndingInferenceService(),
+                storageService: _FakeStorageService(),
+                capturedFile: File('test/fixtures/fake_image.jpg'),
+                onComplete: (_, __) {},
+              ),
+            ),
+          ),
+        );
+
+    Finder photo() =>
+        find.byWidgetPredicate((w) => w is Image && w.image is FileImage);
+
+    Finder sweepBand() => find.byWidgetPredicate(
+          (w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).gradient is LinearGradient,
+        );
+
+    testWidgets('shows the whole photo, never cropped', (tester) async {
+      await pump(tester);
+      final image = tester.widget<Image>(photo());
+      expect(image.fit, BoxFit.contain);
+      expect(image.width, DesignTokens.analyzingPhotoSize);
+      expect(image.height, isNull);
+
+      final size = tester.getSize(
+        find.ancestor(of: photo(), matching: find.byType(Container)).first,
+      );
+      expect(size.width, DesignTokens.analyzingPhotoSize);
+      expect(
+          size.height, lessThanOrEqualTo(DesignTokens.analyzingPhotoMaxHeight));
+    });
+
+    testWidgets('the scanning light sweeps over it', (tester) async {
+      await pump(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(sweepBand(), findsOneWidget);
+    });
+
+    testWidgets('no sweep when the OS asks to reduce motion', (tester) async {
+      await pump(tester, reduceMotion: true);
+      await tester.pump();
+      expect(sweepBand(), findsNothing);
     });
   });
 }

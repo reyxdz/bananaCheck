@@ -20,6 +20,21 @@ abstract interface class RegionClassifier {
   ClassificationResult classifyRegion(img.Image region);
 }
 
+/// Classifies live camera frames for the on-screen "banana found" hint.
+///
+/// Runs off the UI thread so the camera screen stays smooth, and never shares
+/// a native interpreter with [InferenceService.classify], so a frame still in
+/// flight can't collide with the scan the user just started.
+abstract interface class LiveFrameClassifier {
+  /// Whether live classification can still run. Turns `false` for good once
+  /// it has failed too often; the camera then falls back to its colour hint.
+  bool get isAvailable;
+
+  /// Classifies [region], or returns `null` when the frame was skipped: a
+  /// previous frame is still running, or live classification is unavailable.
+  Future<ClassificationResult?> classifyFrame(img.Image region);
+}
+
 /// Decodes photo [bytes] into pixels the model can read.
 ///
 /// Returns `null` when no decoder recognises the bytes; a decoder that

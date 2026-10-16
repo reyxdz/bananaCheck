@@ -44,6 +44,31 @@ class ClassificationResult {
   /// Whether this result names a banana, as opposed to the rejection class.
   bool get isBanana => variety != notBananaVariety;
 
+  /// Confidence below which a result is treated as unreliable.
+  static const double lowConfidenceThreshold = 0.5;
+
+  /// Minimum gap between the best and second-best class required to trust a
+  /// result.
+  ///
+  /// Softmax always sums to 1, so a photo unlike anything in training can
+  /// still produce a high top probability. A narrow gap to the runner-up is
+  /// the clearer signal that the model is guessing.
+  ///
+  /// Set from the margin distribution measured on the held-out test set: real
+  /// bananas clear this easily (median margin 0.996, 1st percentile 0.121), so
+  /// the gate costs 0.6% of correct scans. It is a safety net rather than the
+  /// main defence: the NotBanana class already rejects 100% of the negatives.
+  static const double lowMarginThreshold = 0.10;
+
+  /// Whether this is a banana the model is sure enough about to show.
+  ///
+  /// The Analyzing screen accepts a scan on this, and the live camera hint
+  /// turns its corners blue on it, so the two always agree.
+  bool get isConfidentBanana =>
+      isBanana &&
+      confidence >= lowConfidenceThreshold &&
+      margin >= lowMarginThreshold;
+
   /// Serialise to a flat map suitable for sqflite insertion.
   Map<String, dynamic> toMap() => {
         'variety': variety,

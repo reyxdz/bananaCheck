@@ -18,6 +18,9 @@ import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
+import 'package:banana_classifier/models/classification_result.dart';
+import 'package:banana_classifier/services/inference_service.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 //  Test helpers — duplicated from widget_test.dart because Dart test
@@ -319,6 +322,32 @@ void main() {
       await tester.tap(find.text('Bananalyze'));
       expect(opened, 1);
       expect(find.bySemanticsLabel('About Bananalyze'), findsOneWidget);
+    });
+  });
+
+  group('CameraScreen — live banana check', () {
+    testWidgets(
+        'accepts a live classifier and leaves the hint alone '
+        'until frames arrive', (tester) async {
+      stubPermissionHandler(cameraStatus: 0);
+      final classifier = _FakeLiveClassifier();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CameraScreen(
+            onScan: (_) {},
+            onHistory: () {},
+            liveClassifier: classifier,
+            pickFromGallery: () async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // No camera stream in a widget test, so nothing is classified, and the
+      // screen behaves exactly as without a classifier.
+      expect(classifier.calls, 0);
+      expect(find.text('Upload a Photo'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 
@@ -695,4 +724,17 @@ void main() {
       expect(await pickImageFromGallery(), isNull);
     });
   });
+}
+
+class _FakeLiveClassifier implements LiveFrameClassifier {
+  int calls = 0;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<ClassificationResult?> classifyFrame(img.Image region) async {
+    calls++;
+    return null;
+  }
 }

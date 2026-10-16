@@ -104,8 +104,13 @@ class _HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final service = inferenceService;
+    // The real TFLite service also classifies live frames; the mock doesn't.
+    final live =
+        service is LiveFrameClassifier ? service as LiveFrameClassifier : null;
     return CameraScreen(
       onScan: (capturedFile) => _handleScan(context, capturedFile),
+      liveClassifier: live,
       onHistory: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(

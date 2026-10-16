@@ -258,4 +258,20 @@ void main() {
       expect(model.lengthSync(), greaterThan(1024 * 1024));
     });
   });
+
+  group('live frames', () {
+    test('without the model bytes, live classification is unavailable',
+        () async {
+      final service = TFLiteInferenceService(
+        interpreter: _MockInterpreter(),
+        labels: const ['Saba_Ripe', 'NotBanana'],
+        inputSize: 4,
+      );
+      expect(service.isAvailable, isFalse);
+      expect(
+        await service.classifyFrame(img.Image(width: 4, height: 4)),
+        isNull,
+      );
+    });
+  });
 }
