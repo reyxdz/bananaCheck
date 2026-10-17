@@ -56,6 +56,12 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: DesignTokens.background,
       fontFamily: DesignTokens.fontFamily,
       textTheme: _textTheme,
+      // Material 3 defaults to InkSparkle, which draws its tap ripple with a
+      // fragment shader. The headless engine used by `flutter test` cannot
+      // compile that shader, so every tap throws during paint and any widget
+      // test that presses a button fails. InkRipple draws on the canvas
+      // instead: the same Material feedback, no shader, testable.
+      splashFactory: InkRipple.splashFactory,
       // Consistent, platform-appropriate transitions between screens.
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

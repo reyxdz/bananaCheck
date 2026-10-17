@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+
 import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/services/inference_service.dart';
 
@@ -309,6 +310,7 @@ void main() {
       var opened = 0;
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: CameraScreen(
             onScan: (_) {},
             onHistory: () {},
@@ -333,6 +335,7 @@ void main() {
       final classifier = _FakeLiveClassifier();
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: CameraScreen(
             onScan: (_) {},
             onHistory: () {},
@@ -367,19 +370,26 @@ void main() {
 
     /// Pumps [CameraScreen] on its own with a fake gallery. Defaults to
     /// camera permission denied, since that is where Upload a Photo lives.
+    /// Skips the framing screen so these tests stay about picker validation.
+    /// Framing has its own group below.
+    Future<File?> passThroughCrop(BuildContext _, File photo) async => photo;
+
     Future<List<File>> pumpScreen(
       WidgetTester tester, {
       required GalleryPicker picker,
       int cameraStatus = 0,
+      UploadCropper? cropUpload,
     }) async {
       stubPermissionHandler(cameraStatus: cameraStatus);
       final scanned = <File>[];
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: CameraScreen(
             onScan: scanned.add,
             onHistory: () {},
             pickFromGallery: picker,
+            cropUpload: cropUpload ?? passThroughCrop,
           ),
         ),
       );
@@ -549,6 +559,62 @@ void main() {
 
       expect(scanned, [photo]);
       expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('an upload is framed before it is scanned', (tester) async {
+      // Captures are cropped to the reticle; uploads get the same treatment
+      // or a banana sitting small in a wide photo reads as NotBanana.
+      final photo = tempImage('banana.jpg');
+      final framed = tempImage('banana.jpg.crop.jpg');
+      final offered = <File>[];
+
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cropUpload: (_, picked) async {
+          offered.add(picked);
+          return framed;
+        },
+      );
+
+      await tapUpload(tester);
+
+      expect(offered, [photo], reason: 'the picked photo goes to framing');
+      expect(scanned, [framed], reason: 'the framed crop is what gets scanned');
+    });
+
+    testWidgets('backing out of framing does not scan the photo',
+        (tester) async {
+      final photo = tempImage('banana.jpg');
+
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cropUpload: (_, __) async => null,
+      );
+
+      await tapUpload(tester);
+
+      expect(scanned, isEmpty);
+      expect(find.byType(SnackBar), findsNothing,
+          reason: 'cancelling is not an error');
+    });
+
+    testWidgets('Upload a Photo is tappable again after backing out of framing',
+        (tester) async {
+      final photo = tempImage('banana.jpg');
+
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cropUpload: (_, __) async => null,
+      );
+
+      await tapUpload(tester);
+      await tapUpload(tester);
+
+      expect(scanned, isEmpty);
+      expect(find.text('Upload a Photo'), findsOneWidget);
     });
 
     testWidgets('accepts PNG regardless of extension case', (tester) async {

@@ -31,6 +31,7 @@ void main() {
 
     Widget buildScreen({required ClassificationResult result}) {
       return MaterialApp(
+        theme: ThemeData(splashFactory: InkRipple.splashFactory),
         home: ResultsScreen(
           result: result,
           onScanAgain: () => scanAgainPressed = true,

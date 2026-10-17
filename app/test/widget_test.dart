@@ -8,6 +8,7 @@ import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -365,7 +366,10 @@ void main() {
       (tester) async {
     final dir = Directory.systemTemp.createTempSync('upload_e2e');
     addTearDown(() => dir.deleteSync(recursive: true));
-    final photo = File('${dir.path}/banana.jpg')..writeAsBytesSync([0, 0]);
+    // A real JPEG: the framing screen decodes the photo before it can show
+    // the crop box, so a two-byte stub would never get past the spinner.
+    final photo = File('${dir.path}/banana.jpg')
+      ..writeAsBytesSync(img.encodeJpg(img.Image(width: 64, height: 48)));
 
     // The real default picker, backed by a stubbed image_picker channel.
     const pickerChannel = MethodChannel('plugins.flutter.io/image_picker');
@@ -384,16 +388,45 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Upload a Photo'));
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 50)),
-    );
+
+    // Single frames, not pumpAndSettle: the framing screen shows a spinner
+    // while it decodes, and an indeterminate indicator never settles. Wait
+    // for the spinner to clear rather than a fixed count — the footer button
+    // renders throughout but stays disabled until the photo is decoded, so
+    // tapping too early does nothing at all.
+    for (var i = 0; i < 40; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+      final onCropScreen = find.text('Frame the banana').evaluate().isNotEmpty;
+      final stillDecoding =
+          find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+      if (onCropScreen && !stillDecoding) break;
+    }
+
+    expect(find.text('Frame the banana'), findsOneWidget);
+
+    // Confirming writes the cropped JPEG, which is real file I/O: the tap has
+    // to happen inside runAsync or the write never completes.
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Use this photo'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    for (var i = 0; i < 20; i++) {
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      if (find.text('Saba').evaluate().isNotEmpty) break;
+    }
     await tester.pumpAndSettle();
 
     expect(find.text('Saba'), findsOneWidget);
 
     expect(find.text('Ripe'), findsWidgets);
     final records = await storage.getRecords();
-    expect(records.single.imagePath, photo.path);
+    expect(records.single.imagePath, '${photo.path}.crop.jpg');
 
     await tester.tap(find.text('Scan Again'));
     await tester.pumpAndSettle();
