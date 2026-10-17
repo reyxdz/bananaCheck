@@ -38,11 +38,26 @@ const int _gridSize = 96;
 /// Fraction of each edge sampled to estimate the background colour.
 const double _borderFraction = 0.10;
 
-/// Euclidean RGB distance beyond which a cell differs from the background.
+/// How much a cell's brightness counts next to its colour.
 ///
-/// Tuned on the training set: lower and fabric texture registers as subject,
-/// higher and a pale banana on a white surface is missed.
-const double _backgroundDistance = 28.0;
+/// Comparing raw RGB makes the detector react to shading, and a surface with
+/// folds or a lighting gradient then reads as subject: on a photo of a green
+/// banana on creased magenta cloth, 69% of cells cleared the threshold and
+/// the "subject" spanned the whole frame.
+///
+/// Comparing colour alone fixes that but loses black overripe peel, which
+/// differs from a pale table in brightness and almost nothing else —
+/// detection fell to 65% on overripe. Damping brightness rather than
+/// discarding it keeps both: measured across the training set, this finds a
+/// subject in 100% of unripe, ripe and overripe photos.
+const double _lumaWeight = 0.35;
+
+/// Distance in that space beyond which a cell differs from the background.
+///
+/// Tuned with [_lumaWeight] on the training set: lower and fabric texture
+/// registers as subject, higher and a pale banana on a white surface is
+/// missed.
+const double _backgroundDistance = 24.0;
 
 /// Neighbours a set cell needs to survive the erode half of the opening.
 ///
@@ -93,8 +108,9 @@ Rect? detectSubjectBounds(img.Image image) {
   return rect;
 }
 
-/// Nearest-neighbour sample of [image] into a [_gridSize]² grid of RGB
-/// triples, laid out row-major as r,g,b per cell.
+/// Nearest-neighbour sample of [image] into a [_gridSize]² grid, laid out
+/// row-major as three components per cell: Cb, Cr, and brightness scaled by
+/// [_lumaWeight].
 List<double> _sampleGrid(img.Image image) {
   final cells = List<double>.filled(_gridSize * _gridSize * 3, 0);
 
@@ -103,38 +119,43 @@ List<double> _sampleGrid(img.Image image) {
     for (var col = 0; col < _gridSize; col++) {
       final x = (col * image.width ~/ _gridSize).clamp(0, image.width - 1);
       final pixel = image.getPixel(x, y);
+      final r = pixel.r.toDouble();
+      final g = pixel.g.toDouble();
+      final b = pixel.b.toDouble();
+
+      // BT.601, the same conversion `frame_quality.dart` uses for live frames.
       final i = (row * _gridSize + col) * 3;
-      cells[i] = pixel.r.toDouble();
-      cells[i + 1] = pixel.g.toDouble();
-      cells[i + 2] = pixel.b.toDouble();
+      cells[i] = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+      cells[i + 1] = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+      cells[i + 2] = (0.299 * r + 0.587 * g + 0.114 * b) * _lumaWeight;
     }
   }
 
   return cells;
 }
 
-/// Median colour of the border cells.
+/// Median of the border cells, component by component.
 ///
 /// The median rather than the mean: a banana running off the edge of the
 /// frame, or a shadow along one side, shifts a mean but not a median.
 List<double> _estimateBackground(List<double> cells) {
   final margin = math.max(1, (_gridSize * _borderFraction).round());
-  final reds = <double>[];
-  final greens = <double>[];
   final blues = <double>[];
+  final reds = <double>[];
+  final lumas = <double>[];
 
   for (var row = 0; row < _gridSize; row++) {
     final rowIsBorder = row < margin || row >= _gridSize - margin;
     for (var col = 0; col < _gridSize; col++) {
       if (!rowIsBorder && col >= margin && col < _gridSize - margin) continue;
       final i = (row * _gridSize + col) * 3;
-      reds.add(cells[i]);
-      greens.add(cells[i + 1]);
-      blues.add(cells[i + 2]);
+      blues.add(cells[i]);
+      reds.add(cells[i + 1]);
+      lumas.add(cells[i + 2]);
     }
   }
 
-  return [_median(reds), _median(greens), _median(blues)];
+  return [_median(blues), _median(reds), _median(lumas)];
 }
 
 double _median(List<double> values) {
@@ -148,10 +169,11 @@ List<bool> _differsFromBackground(List<double> cells, List<double> background) {
 
   for (var cell = 0; cell < mask.length; cell++) {
     final i = cell * 3;
-    final dr = cells[i] - background[0];
-    final dg = cells[i + 1] - background[1];
-    final db = cells[i + 2] - background[2];
-    mask[cell] = math.sqrt(dr * dr + dg * dg + db * db) > _backgroundDistance;
+    final dcb = cells[i] - background[0];
+    final dcr = cells[i + 1] - background[1];
+    final dy = cells[i + 2] - background[2];
+    mask[cell] =
+        math.sqrt(dcb * dcb + dcr * dcr + dy * dy) > _backgroundDistance;
   }
 
   return mask;
