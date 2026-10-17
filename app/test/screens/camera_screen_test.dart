@@ -370,9 +370,9 @@ void main() {
 
     /// Pumps [CameraScreen] on its own with a fake gallery. Defaults to
     /// camera permission denied, since that is where Upload a Photo lives.
-    /// Skips the framing screen so these tests stay about picker validation.
+    /// Skips the automatic crop so these tests stay about picker validation.
     /// Framing has its own group below.
-    Future<File?> passThroughCrop(BuildContext _, File photo) async => photo;
+    Future<File?> passThroughCrop(File photo) async => photo;
 
     Future<List<File>> pumpScreen(
       WidgetTester tester, {
@@ -571,7 +571,7 @@ void main() {
       final scanned = await pumpScreen(
         tester,
         picker: () async => photo,
-        cropUpload: (_, picked) async {
+        cropUpload: (picked) async {
           offered.add(picked);
           return framed;
         },
@@ -583,37 +583,41 @@ void main() {
       expect(scanned, [framed], reason: 'the framed crop is what gets scanned');
     });
 
-    testWidgets('backing out of framing does not scan the photo',
+    testWidgets('a photo that cannot be framed is still scanned as picked',
         (tester) async {
+      // Framing returns null only when the photo cannot be read or the crop
+      // cannot be written. Scanning it uncropped is a worse scan, never a
+      // broken one, and matches what the camera path does when reticle
+      // cropping fails — the user is never left with a dead end (§7.3).
       final photo = tempImage('banana.jpg');
 
       final scanned = await pumpScreen(
         tester,
         picker: () async => photo,
-        cropUpload: (_, __) async => null,
+        cropUpload: (_) async => null,
       );
 
       await tapUpload(tester);
 
-      expect(scanned, isEmpty);
+      expect(scanned, [photo]);
       expect(find.byType(SnackBar), findsNothing,
-          reason: 'cancelling is not an error');
+          reason: 'a fallback is not an error');
     });
 
-    testWidgets('Upload a Photo is tappable again after backing out of framing',
+    testWidgets('Upload a Photo is tappable again after a framing fallback',
         (tester) async {
       final photo = tempImage('banana.jpg');
 
       final scanned = await pumpScreen(
         tester,
         picker: () async => photo,
-        cropUpload: (_, __) async => null,
+        cropUpload: (_) async => null,
       );
 
       await tapUpload(tester);
       await tapUpload(tester);
 
-      expect(scanned, isEmpty);
+      expect(scanned, [photo, photo], reason: 'both uploads reach the scan');
       expect(find.text('Upload a Photo'), findsOneWidget);
     });
 

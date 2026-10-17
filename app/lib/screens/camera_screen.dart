@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/auto_crop.dart';
 import '../services/frame_quality.dart';
 import '../services/inference_service.dart';
 import '../services/reticle_crop.dart';
@@ -17,7 +18,6 @@ import '../widgets/primary_button.dart';
 import '../widgets/scan_overlay.dart';
 import '../widgets/screen_header.dart';
 import '../widgets/secondary_button.dart';
-import 'crop_screen.dart';
 
 /// Camera permission status as seen by the screen UI.
 ///
@@ -42,24 +42,17 @@ enum CameraPermissionState {
 /// user backed out without picking anything.
 typedef GalleryPicker = Future<File?> Function();
 
-/// Lets the user frame [photo] before it is scanned, returning the cropped
-/// file, the original if framing was skipped, or `null` if they backed out.
-typedef UploadCropper = Future<File?> Function(BuildContext context, File photo);
+/// Frames [photo] for the model, returning the cropped file or `null` if it
+/// could not be read or written at all.
+typedef UploadCropper = Future<File?> Function(File photo);
 
-/// Default [UploadCropper]: the square framing box on [CropScreen].
+/// Default [UploadCropper]: [autoCropToSubject].
 ///
 /// Camera captures are cropped to the reticle before they reach the model;
 /// uploads need the same treatment, or a banana sitting small in a wide photo
 /// is read as `NotBanana` and the user is told we couldn't tell clearly.
-///
-/// The box is positioned on the banana by [detectSubjectBounds], so for most
-/// photos the user only confirms — but they always see the crop before it is
-/// scanned, which is what detection on its own cannot guarantee.
-Future<File?> cropUploadedPhoto(BuildContext context, File photo) {
-  return Navigator.of(context).push<File>(
-    MaterialPageRoute<File>(builder: (_) => CropScreen(photo: photo)),
-  );
-}
+/// Framing happens without asking, so an upload behaves exactly like a
+/// capture: pick, then result (§7.1).
 
 /// Label for the gallery action.
 const _uploadLabel = 'Upload a Photo';
@@ -91,7 +84,7 @@ class CameraScreen extends StatefulWidget {
     this.onAbout,
     this.liveClassifier,
     this.pickFromGallery = pickImageFromGallery,
-    this.cropUpload = cropUploadedPhoto,
+    this.cropUpload = autoCropToSubject,
     super.key,
   });
 
@@ -111,7 +104,7 @@ class CameraScreen extends StatefulWidget {
   /// Injectable so widget tests can fake the platform gallery.
   final GalleryPicker pickFromGallery;
 
-  /// Injectable so widget tests can skip the framing screen.
+  /// Injectable so widget tests can skip the automatic crop.
   final UploadCropper cropUpload;
 
   @override
@@ -638,11 +631,13 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (!mounted) return;
 
-      // Frame it the way the reticle frames a capture, so both paths hand the
-      // model a square with the banana filling it. A null result means the
-      // user backed out of framing — stay here rather than scanning anyway.
-      final scanFile = await widget.cropUpload(context, file);
-      if (!mounted || scanFile == null) return;
+      // Frame it the way the reticle frames a capture, so both paths hand
+      // the model a square with the banana filling it. A null result means
+      // the photo could not be read or written at all; scanning it as picked
+      // is a worse scan, never a broken one, and matches the camera path's
+      // fallback when reticle cropping fails.
+      final scanFile = await widget.cropUpload(file) ?? file;
+      if (!mounted) return;
 
       widget.onScan(scanFile);
     } catch (_) {

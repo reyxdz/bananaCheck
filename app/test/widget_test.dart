@@ -366,8 +366,8 @@ void main() {
       (tester) async {
     final dir = Directory.systemTemp.createTempSync('upload_e2e');
     addTearDown(() => dir.deleteSync(recursive: true));
-    // A real JPEG: the framing screen decodes the photo before it can show
-    // the crop box, so a two-byte stub would never get past the spinner.
+    // A real JPEG: the upload path decodes the photo to crop it, so a
+    // two-byte stub would fall straight through to the uncropped fallback.
     final photo = File('${dir.path}/banana.jpg')
       ..writeAsBytesSync(img.encodeJpg(img.Image(width: 64, height: 48)));
 
@@ -387,37 +387,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // One tap, no framing step: cropping happens automatically, so an upload
+    // goes straight to the result exactly like a capture (§7.1, §7.8).
     await tester.tap(find.text('Upload a Photo'));
 
-    // Single frames, not pumpAndSettle: the framing screen shows a spinner
-    // while it decodes, and an indeterminate indicator never settles. Wait
-    // for the spinner to clear rather than a fixed count — the footer button
-    // renders throughout but stays disabled until the photo is decoded, so
-    // tapping too early does nothing at all.
+    // Decoding, cropping and writing the JPEG is real file I/O, so the work
+    // only advances inside runAsync. Pump until the result appears rather
+    // than guessing how many frames that takes.
     for (var i = 0; i < 40; i++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 50)),
       );
       await tester.pump();
-      final onCropScreen = find.text('Frame the banana').evaluate().isNotEmpty;
-      final stillDecoding =
-          find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
-      if (onCropScreen && !stillDecoding) break;
-    }
-
-    expect(find.text('Frame the banana'), findsOneWidget);
-
-    // Confirming writes the cropped JPEG, which is real file I/O: the tap has
-    // to happen inside runAsync or the write never completes.
-    await tester.runAsync(() async {
-      await tester.tap(find.text('Use this photo'));
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    });
-    for (var i = 0; i < 20; i++) {
-      await tester.pump();
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 50)),
-      );
       if (find.text('Saba').evaluate().isNotEmpty) break;
     }
     await tester.pumpAndSettle();
@@ -426,7 +407,7 @@ void main() {
 
     expect(find.text('Ripe'), findsWidgets);
     final records = await storage.getRecords();
-    expect(records.single.imagePath, '${photo.path}.crop.jpg');
+    expect(records.single.imagePath, '${photo.path}.auto.jpg');
 
     await tester.tap(find.text('Scan Again'));
     await tester.pumpAndSettle();
