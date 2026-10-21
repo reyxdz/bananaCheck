@@ -107,5 +107,4 @@ void main() {
       expect(box, initialCropBox(imageRect));
     });
   });
-
 }

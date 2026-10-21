@@ -21,12 +21,11 @@ const double defaultCropFraction = 0.65;
 /// Smallest fraction of the shortest side the box may shrink to.
 const double minimumCropFraction = 0.2;
 
-
 /// Square box to start with: [defaultCropFraction] of the shortest side of
 /// [imageRect], centred on the image.
 Rect initialCropBox(Rect imageRect) {
-  final extent = math.min(imageRect.width, imageRect.height) *
-      defaultCropFraction;
+  final extent =
+      math.min(imageRect.width, imageRect.height) * defaultCropFraction;
   return Rect.fromCenter(
     center: imageRect.center,
     width: extent,
@@ -65,7 +64,6 @@ Rect cropBoxForSubject({required Rect subject, required Rect imageRect}) {
   );
 }
 
-
 /// Keeps [box] square, no larger than [bounds], no smaller than
 /// [minimumCropFraction] of it, and fully inside it.
 ///
@@ -93,4 +91,3 @@ Rect clampCropBox({required Rect box, required Rect bounds}) {
     height: extent,
   );
 }
-

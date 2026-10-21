@@ -204,8 +204,8 @@ void _open(List<bool> mask) {
       final cell = row * _gridSize + col;
       // Dilate back, but only into cells that differed from the background
       // to begin with, so the subject cannot grow past its own edge.
-      mask[cell] = eroded[cell] ||
-          (mask[cell] && _neighbourCount(eroded, row, col) > 0);
+      mask[cell] =
+          eroded[cell] || (mask[cell] && _neighbourCount(eroded, row, col) > 0);
     }
   }
 }
