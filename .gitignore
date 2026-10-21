@@ -61,3 +61,19 @@ opencode.jsonc
 CLAUDE.md
 AGENTS.md
 GEMINI.md
+
+# Generated ML run artefacts — every one of these is reproduced by
+# `ml/train.py` + `ml/evaluate.py`, and the weights are already excluded
+# above. Keeping them out stops each retrain showing up as a diff.
+ml/output*/
+ml/backup/
+
+# Local scratch photos used for manual device testing.
+banana-upload/
+
+# Generated thesis figures and metric dumps. The script that produces them
+# (plot_training_curves.py) and the written notes (chapter4-5-fill-in.md,
+# model_metrics_report_19class.md) stay tracked — only their output is ignored.
+docs/thesis-figures/*.png
+docs/thesis-figures/*.svg
+docs/thesis-figures/*.json

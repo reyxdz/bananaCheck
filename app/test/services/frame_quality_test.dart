@@ -1,7 +1,10 @@
 import 'dart:typed_data';
+import 'dart:ui' show Rect;
 
+import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/services/frame_quality.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 /// Typical YCbCr values (BT.601) for test frames.
 const _yellowPeel = (y: 199, cb: 50, cr: 150);
@@ -289,6 +292,367 @@ void main() {
           ScanCondition.searching,
         );
       });
+    });
+  });
+
+  group('yuvRegionToRgb', () {
+    // An 8x4 landscape sensor frame: white, with a yellow top-left quadrant
+    // (sensor columns 0-3, rows 0-1). Planes are Android 3-plane, stride 1.
+    const sensorW = 8, sensorH = 4;
+
+    ({Uint8List y, Uint8List u, Uint8List v}) frame() {
+      final y = Uint8List(sensorW * sensorH);
+      final u = Uint8List((sensorW ~/ 2) * (sensorH ~/ 2));
+      final v = Uint8List((sensorW ~/ 2) * (sensorH ~/ 2));
+      for (var row = 0; row < sensorH; row++) {
+        for (var col = 0; col < sensorW; col++) {
+          final p = col < 4 && row < 2 ? _yellowPeel : _whiteTable;
+          y[row * sensorW + col] = p.y;
+          final i = (row ~/ 2) * (sensorW ~/ 2) + (col ~/ 2);
+          u[i] = p.cb;
+          v[i] = p.cr;
+        }
+      }
+      return (y: y, u: u, v: v);
+    }
+
+    img.Image? convert({
+      required int rotation,
+      Rect? crop,
+      int outputSize = 8,
+    }) {
+      final f = frame();
+      final quarter = rotation == 90 || rotation == 270;
+      return yuvRegionToRgb(
+        width: sensorW,
+        height: sensorH,
+        y: f.y,
+        yRowStride: sensorW,
+        u: f.u,
+        v: f.v,
+        uvRowStride: sensorW ~/ 2,
+        uvPixelStride: 1,
+        rotation: rotation,
+        uprightCrop: crop ??
+            Rect.fromLTWH(
+              0,
+              0,
+              (quarter ? sensorH : sensorW).toDouble(),
+              (quarter ? sensorW : sensorH).toDouble(),
+            ),
+        outputSize: outputSize,
+      );
+    }
+
+    bool isYellow(img.Pixel p) => p.r > 200 && p.g > 180 && p.b < 100;
+    bool isWhite(img.Pixel p) => p.r > 225 && p.g > 225 && p.b > 225;
+
+    test('converts a known yellow and white with BT.601', () {
+      final out = convert(rotation: 0)!;
+      final yellow = out.getPixel(0, 0);
+      expect(yellow.r, 230);
+      expect(yellow.g, 210);
+      expect(yellow.b, 61);
+      final white = out.getPixel(7, 7);
+      expect([white.r, white.g, white.b], [235, 235, 235]);
+    });
+
+    test('output is the requested square size', () {
+      final out = convert(rotation: 90, outputSize: 16)!;
+      expect(out.width, 16);
+      expect(out.height, 16);
+    });
+
+    test('rotation 0 keeps the yellow quadrant top-left', () {
+      final out = convert(rotation: 0)!;
+      expect(isYellow(out.getPixel(0, 0)), isTrue);
+      expect(isWhite(out.getPixel(7, 0)), isTrue);
+      expect(isWhite(out.getPixel(0, 7)), isTrue);
+    });
+
+    test('rotation 90 (Android back camera) turns it to the top-right', () {
+      final out = convert(rotation: 90)!;
+      expect(isYellow(out.getPixel(7, 0)), isTrue);
+      expect(isWhite(out.getPixel(0, 0)), isTrue);
+      expect(isWhite(out.getPixel(7, 7)), isTrue);
+    });
+
+    test('rotation 270 turns it to the bottom-left', () {
+      final out = convert(rotation: 270)!;
+      expect(isYellow(out.getPixel(0, 7)), isTrue);
+      expect(isWhite(out.getPixel(0, 0)), isTrue);
+      expect(isWhite(out.getPixel(7, 7)), isTrue);
+    });
+
+    test('rotation 180 turns it to the bottom-right', () {
+      final out = convert(rotation: 180)!;
+      expect(isYellow(out.getPixel(7, 7)), isTrue);
+      expect(isWhite(out.getPixel(0, 0)), isTrue);
+    });
+
+    test('a crop picks out only that region', () {
+      final out = convert(
+        rotation: 0,
+        crop: const Rect.fromLTWH(0, 0, 4, 2),
+        outputSize: 4,
+      )!;
+      for (var oy = 0; oy < 4; oy++) {
+        for (var ox = 0; ox < 4; ox++) {
+          expect(isYellow(out.getPixel(ox, oy)), isTrue);
+        }
+      }
+    });
+
+    test('returns null for a crop off the frame', () {
+      expect(
+        convert(rotation: 0, crop: const Rect.fromLTWH(100, 100, 10, 10)),
+        isNull,
+      );
+    });
+
+    test('returns null for an unsupported rotation', () {
+      expect(convert(rotation: 45), isNull);
+    });
+
+    test('returns null when the planes are shorter than the strides say', () {
+      expect(
+        yuvRegionToRgb(
+          width: sensorW,
+          height: sensorH,
+          y: Uint8List(4),
+          yRowStride: sensorW,
+          u: Uint8List(1),
+          v: Uint8List(1),
+          uvRowStride: sensorW ~/ 2,
+          uvPixelStride: 1,
+          rotation: 0,
+          uprightCrop: const Rect.fromLTWH(0, 0, 8, 4),
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('ScanConditionTracker with the model', () {
+    const bananaColours = FrameStats(brightness: 0.6, bananaCoverage: 0.5);
+    const noBananaColours = FrameStats(brightness: 0.6, bananaCoverage: 0);
+    const darkRoom = FrameStats(brightness: 0.1, bananaCoverage: 0.5);
+    final start = DateTime(2026);
+    DateTime at(int ms) => start.add(Duration(milliseconds: ms));
+
+    ClassificationResult hit() => ClassificationResult(
+          variety: 'Saba',
+          ripeness: 'Overripe',
+          confidence: 0.9,
+          margin: 0.8,
+        );
+    ClassificationResult miss() => ClassificationResult(
+          variety: ClassificationResult.notBananaVariety,
+          ripeness: '',
+          confidence: 0.95,
+          margin: 0.9,
+        );
+
+    test('a confident banana is ready even when colours say no', () {
+      // A dark, spotted banana: the colour check misses it, the model doesn't.
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0));
+      expect(tracker.reportModel(hit(), at: at(10)), ScanCondition.ready);
+      expect(tracker.update(noBananaColours, at: at(300)), ScanCondition.ready);
+    });
+
+    test('the model overrides banana-like colours that are not a banana', () {
+      final tracker = ScanConditionTracker()..update(bananaColours, at: at(0));
+      expect(tracker.condition, ScanCondition.ready);
+      expect(tracker.reportModel(miss(), at: at(10)), ScanCondition.searching);
+    });
+
+    test('one miss keeps ready; two in a row clear it', () {
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0))
+        ..reportModel(hit(), at: at(10));
+      expect(tracker.reportModel(miss(), at: at(500)), ScanCondition.ready);
+      expect(
+        tracker.reportModel(miss(), at: at(1000)),
+        ScanCondition.searching,
+      );
+    });
+
+    test('a hit between misses resets the count', () {
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0))
+        ..reportModel(hit(), at: at(10))
+        ..reportModel(miss(), at: at(500))
+        ..reportModel(hit(), at: at(1000));
+      expect(tracker.reportModel(miss(), at: at(1500)), ScanCondition.ready);
+    });
+
+    test('unsure or torn results never turn ready', () {
+      final unsure = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.4,
+        margin: 0.3,
+      );
+      final torn = ClassificationResult(
+        variety: 'Saba',
+        ripeness: 'Ripe',
+        confidence: 0.55,
+        margin: 0.05,
+      );
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0));
+      expect(tracker.reportModel(unsure, at: at(10)), ScanCondition.searching);
+      expect(tracker.reportModel(torn, at: at(20)), ScanCondition.searching);
+    });
+
+    test('too dark still wins over a banana', () {
+      final tracker = ScanConditionTracker()..update(darkRoom, at: at(0));
+      expect(tracker.reportModel(hit(), at: at(10)), ScanCondition.tooDark);
+    });
+
+    test('a stale verdict hands back to the colour check', () {
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0))
+        ..reportModel(hit(), at: at(10));
+      final later = at(10).add(ScanConditionTracker.defaultModelStaleAfter);
+      expect(
+        tracker.update(noBananaColours, at: later),
+        ScanCondition.searching,
+      );
+    });
+
+    test('a verdict before any frame stats is used once stats arrive', () {
+      final tracker = ScanConditionTracker();
+      expect(tracker.reportModel(hit(), at: at(0)), ScanCondition.searching);
+      expect(tracker.update(noBananaColours, at: at(100)), ScanCondition.ready);
+    });
+
+    test('reset forgets the model verdict', () {
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0))
+        ..reportModel(hit(), at: at(10))
+        ..reset();
+      expect(
+        tracker.update(noBananaColours, at: at(100)),
+        ScanCondition.searching,
+      );
+    });
+
+    test('notFound tip still appears while the model sees nothing', () {
+      final tracker = ScanConditionTracker()
+        ..update(noBananaColours, at: at(0))
+        ..reportModel(miss(), at: at(10));
+      tracker.reportModel(miss(), at: at(1000));
+      final fiveSecondsOn = at(0).add(ScanConditionTracker.notFoundAfter);
+      tracker.reportModel(miss(), at: fiveSecondsOn);
+      expect(tracker.condition, ScanCondition.notFound);
+    });
+  });
+
+  group('ScanConditionTracker model-only mode', () {
+    const bananaColours = FrameStats(brightness: 0.6, bananaCoverage: 0.5);
+    const noBananaColours = FrameStats(brightness: 0.6, bananaCoverage: 0);
+    const darkRoom = FrameStats(brightness: 0.1, bananaCoverage: 0.5);
+    final start = DateTime(2026);
+    DateTime at(int ms) => start.add(Duration(milliseconds: ms));
+
+    ClassificationResult hit() => ClassificationResult(
+          variety: 'Saba',
+          ripeness: 'Ripe',
+          confidence: 0.9,
+          margin: 0.8,
+        );
+
+    test('banana colours alone never turn the corners blue', () {
+      final tracker = ScanConditionTracker()..modelOnly = true;
+      expect(tracker.update(bananaColours, at: at(0)), ScanCondition.searching);
+    });
+
+    test('a model hit does', () {
+      final tracker = ScanConditionTracker()
+        ..modelOnly = true
+        ..update(noBananaColours, at: at(0));
+      expect(tracker.reportModel(hit(), at: at(10)), ScanCondition.ready);
+    });
+
+    test('a stale hit goes back to searching, not to the colour check', () {
+      final tracker = ScanConditionTracker()
+        ..modelOnly = true
+        ..update(bananaColours, at: at(0))
+        ..reportModel(hit(), at: at(10));
+      final later = at(10).add(tracker.modelStaleAfter);
+      expect(tracker.update(bananaColours, at: later), ScanCondition.searching);
+    });
+
+    test('a wider stale window keeps a slow phone\'s verdict', () {
+      final tracker = ScanConditionTracker()
+        ..modelOnly = true
+        ..modelStaleAfter = const Duration(seconds: 6)
+        ..update(noBananaColours, at: at(0))
+        ..reportModel(hit(), at: at(10));
+      expect(
+        tracker.update(noBananaColours, at: at(4000)),
+        ScanCondition.ready,
+      );
+    });
+
+    test('too dark is still reported', () {
+      final tracker = ScanConditionTracker()..modelOnly = true;
+      expect(tracker.update(darkRoom, at: at(0)), ScanCondition.tooDark);
+    });
+
+    test('turning model-only off lets the colour check fill in again', () {
+      final tracker = ScanConditionTracker()..modelOnly = true;
+      tracker.update(bananaColours, at: at(0));
+      tracker.modelOnly = false;
+      expect(tracker.update(bananaColours, at: at(300)), ScanCondition.ready);
+    });
+  });
+
+  group('LiveCheckPacer', () {
+    test('starts at the fastest pace', () {
+      expect(LiveCheckPacer().interval, LiveCheckPacer.minInterval);
+    });
+
+    test('a fast phone stays at the fastest pace', () {
+      final pacer = LiveCheckPacer()..record(const Duration(milliseconds: 80));
+      expect(pacer.interval, LiveCheckPacer.minInterval);
+    });
+
+    test('waits twice the run time on a slower phone', () {
+      final pacer = LiveCheckPacer()..record(const Duration(milliseconds: 400));
+      expect(pacer.interval, const Duration(milliseconds: 800));
+    });
+
+    test('never slower than the max interval', () {
+      final pacer = LiveCheckPacer()..record(const Duration(seconds: 3));
+      expect(pacer.interval, LiveCheckPacer.maxInterval);
+    });
+
+    test('smooths out a single slow run', () {
+      final pacer = LiveCheckPacer()
+        ..record(const Duration(milliseconds: 300))
+        ..record(const Duration(milliseconds: 1300));
+      // Average 300 + 0.3 * 1000 = 600 ms, so 1200 ms, not 2600 ms.
+      expect(pacer.interval, const Duration(milliseconds: 1200));
+    });
+
+    test('verdicts stay valid across three runs, never under the default', () {
+      expect(
+        LiveCheckPacer().staleAfter,
+        ScanConditionTracker.defaultModelStaleAfter,
+      );
+      final slow = LiveCheckPacer()..record(const Duration(seconds: 1));
+      expect(slow.interval, const Duration(seconds: 2));
+      expect(slow.staleAfter, const Duration(seconds: 6));
+    });
+
+    test('reset forgets the timing', () {
+      final pacer = LiveCheckPacer()
+        ..record(const Duration(seconds: 1))
+        ..reset();
+      expect(pacer.interval, LiveCheckPacer.minInterval);
     });
   });
 }

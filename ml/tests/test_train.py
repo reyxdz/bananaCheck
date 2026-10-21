@@ -28,7 +28,9 @@ from PIL import Image
 
 from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.train import (
+    BASE_MODEL_NAME,
     TrainingConfig,
+    build_arg_parser,
     build_model,
     load_datasets,
     main,
@@ -147,8 +149,9 @@ class TestBuildModel:
             image_width=_TEST_IMG_SIZE,
             image_height=_TEST_IMG_SIZE,
         )
-        # The second layer is the MobileNetV2 base (first is InputLayer)
-        base_model = model.layers[1]
+        # Found by name, not index: the augmentation layers sit between the
+        # input and the base, so the index shifts with ``augment_lighting``.
+        base_model = model.get_layer(BASE_MODEL_NAME)
         assert not base_model.trainable
 
     def test_custom_num_classes(self) -> None:
@@ -158,6 +161,74 @@ class TestBuildModel:
             image_height=_TEST_IMG_SIZE,
         )
         assert model.output_shape == (None, 5)
+
+    def test_lighting_augmentation_is_on_by_default(self) -> None:
+        model = build_model(
+            num_classes=NUM_CLASSES,
+            image_width=_TEST_IMG_SIZE,
+            image_height=_TEST_IMG_SIZE,
+        )
+        names = [layer.name for layer in model.layers]
+        assert "random_brightness" in names
+        assert "random_contrast" in names
+
+    def test_lighting_augmentation_can_be_disabled(self) -> None:
+        model = build_model(
+            num_classes=NUM_CLASSES,
+            image_width=_TEST_IMG_SIZE,
+            image_height=_TEST_IMG_SIZE,
+            augment_lighting=False,
+        )
+        names = [layer.name for layer in model.layers]
+        assert "random_brightness" not in names
+        assert "random_contrast" not in names
+
+    def test_augmentation_does_not_affect_inference(self) -> None:
+        """Augmentation must never reach a prediction.
+
+        This is the guarantee that lets the layers live in the model: if they
+        were active at inference the same photo would classify differently on
+        every scan, and the TFLite export would not match the Keras model.
+        """
+        model = build_model(
+            num_classes=NUM_CLASSES,
+            image_width=_TEST_IMG_SIZE,
+            image_height=_TEST_IMG_SIZE,
+        )
+        image = np.full((1, _TEST_IMG_SIZE, _TEST_IMG_SIZE, 3), 0.5, dtype=np.float32)
+
+        first = model.predict(image, verbose=0)
+        second = model.predict(image, verbose=0)
+
+        np.testing.assert_allclose(first, second, rtol=0, atol=0)
+
+    def test_augmentation_perturbs_training_pass(self) -> None:
+        """…and it must actually do something when training is on."""
+        model = build_model(
+            num_classes=NUM_CLASSES,
+            image_width=_TEST_IMG_SIZE,
+            image_height=_TEST_IMG_SIZE,
+            dropout_rate=0.0,
+        )
+        image = np.full((1, _TEST_IMG_SIZE, _TEST_IMG_SIZE, 3), 0.5, dtype=np.float32)
+
+        # Dropout is off, so any difference comes from the lighting layers.
+        outputs = {tuple(model(image, training=True).numpy().ravel()) for _ in range(8)}
+        assert len(outputs) > 1
+
+    def test_cli_flag_can_turn_lighting_augmentation_off(self) -> None:
+        """The bundled model predates the augmentation, so it must be
+        reproducible: without a way to switch the layers off from the command
+        line, retraining silently yields a different model than the one the
+        app ships."""
+        parser = build_arg_parser()
+        args = parser.parse_args(
+            ["--data-dir", "d", "--output-dir", "o", "--no-lighting-augmentation"]
+        )
+        assert args.no_lighting_augmentation is True
+
+        default = parser.parse_args(["--data-dir", "d", "--output-dir", "o"])
+        assert default.no_lighting_augmentation is False
 
     def test_rejects_fewer_than_two_classes(self) -> None:
         with pytest.raises(ValueError, match="at least 2"):

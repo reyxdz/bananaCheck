@@ -11,23 +11,6 @@ import '../services/storage_service.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/error_view.dart';
 
-/// Confidence threshold below which the result is treated as unreliable
-/// and the user is shown a "Couldn't tell clearly" error instead.
-const double _lowConfidenceThreshold = 0.5;
-
-/// Minimum gap between the best and second-best class required to trust a
-/// result.
-///
-/// Softmax always sums to 1, so a photo unlike anything in training can still
-/// produce a high top probability. A narrow gap to the runner-up is the
-/// clearer signal that the model is guessing.
-///
-/// Set from the margin distribution measured on the held-out test set: real
-/// bananas clear this easily (median margin 0.996, 1st percentile 0.121), so
-/// the gate costs 0.6% of correct scans. It is a safety net rather than the
-/// main defence — the NotBanana class already rejects 100% of the negatives.
-const double _lowMarginThreshold = 0.10;
-
 /// Full-screen "Analyzing…" state shown between capture and results (A15).
 ///
 /// Immediately kicks off [InferenceService.classify] + [StorageService.saveRecord]
@@ -117,9 +100,9 @@ class _AnalyzingScreenState extends State<AnalyzingScreen> {
       //   - the model is unsure,
       //   - it is torn between two classes, or
       //   - it says the photo is not a banana at all.
-      if (result.confidence < _lowConfidenceThreshold ||
-          result.margin < _lowMarginThreshold ||
-          !result.isBanana) {
+      // The limits live on [ClassificationResult] so the live camera hint
+      // uses exactly the same rule.
+      if (!result.isConfidentBanana) {
         setState(() => _error = const LowConfidenceException());
         return;
       }
@@ -268,12 +251,16 @@ class _ScanningPhotoState extends State<_ScanningPhoto>
 
   @override
   Widget build(BuildContext context) {
-    const size = DesignTokens.analyzingPhotoSize;
     final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
 
+    // Fixed width; the height follows the photo's own shape (clamped) and
+    // `contain` keeps the whole banana visible.
     return Container(
-      width: size,
-      height: size,
+      width: DesignTokens.analyzingPhotoSize,
+      constraints: const BoxConstraints(
+        minHeight: DesignTokens.analyzingPhotoSize * 0.75,
+        maxHeight: DesignTokens.analyzingPhotoMaxHeight,
+      ),
       decoration: BoxDecoration(
         color: DesignTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(DesignTokens.radiusLarge),
@@ -281,46 +268,62 @@ class _ScanningPhotoState extends State<_ScanningPhoto>
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
-        fit: StackFit.expand,
+        alignment: Alignment.center,
         children: [
           Image.file(
             widget.file,
-            fit: BoxFit.cover,
+            width: DesignTokens.analyzingPhotoSize,
+            fit: BoxFit.contain,
             excludeFromSemantics: true,
-            errorBuilder: (_, __, ___) => const Center(
-              child: Icon(
-                Icons.eco_rounded,
-                color: DesignTokens.primary,
-                size: DesignTokens.iconLarge,
+            errorBuilder: (_, __, ___) => const SizedBox(
+              width: DesignTokens.analyzingPhotoSize,
+              height: DesignTokens.analyzingPhotoSize,
+              child: Center(
+                child: Icon(
+                  Icons.eco_rounded,
+                  color: DesignTokens.primary,
+                  size: DesignTokens.iconLarge,
+                ),
               ),
             ),
           ),
           if (!reduceMotion)
-            AnimatedBuilder(
-              animation: _sweep,
-              builder: (context, _) {
-                const band = size * 0.35;
-                final top = -band + (size + band) * _sweep.value;
-                return Positioned(
-                  left: 0,
-                  right: 0,
-                  top: top,
-                  height: band,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          DesignTokens.accent.withOpacity(0),
-                          DesignTokens.accent.withOpacity(0.35),
-                          DesignTokens.accent.withOpacity(0),
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final height = constraints.maxHeight;
+                  final band = height * 0.35;
+                  return AnimatedBuilder(
+                    animation: _sweep,
+                    builder: (context, _) {
+                      final top = -band + (height + band) * _sweep.value;
+                      return Stack(
+                        children: [
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            top: top,
+                            height: band,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    DesignTokens.accent.withOpacity(0),
+                                    DesignTokens.accent.withOpacity(0.35),
+                                    DesignTokens.accent.withOpacity(0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
         ],
       ),

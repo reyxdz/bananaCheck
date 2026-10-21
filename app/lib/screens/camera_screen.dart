@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/auto_crop.dart';
 import '../services/frame_quality.dart';
 import '../services/inference_service.dart';
 import '../services/reticle_crop.dart';
@@ -40,6 +42,18 @@ enum CameraPermissionState {
 /// user backed out without picking anything.
 typedef GalleryPicker = Future<File?> Function();
 
+/// Frames [photo] for the model, returning the cropped file or `null` if it
+/// could not be read or written at all.
+typedef UploadCropper = Future<File?> Function(File photo);
+
+/// Default [UploadCropper]: [autoCropToSubject].
+///
+/// Camera captures are cropped to the reticle before they reach the model;
+/// uploads need the same treatment, or a banana sitting small in a wide photo
+/// is read as `NotBanana` and the user is told we couldn't tell clearly.
+/// Framing happens without asking, so an upload behaves exactly like a
+/// capture: pick, then result (§7.1).
+
 /// Label for the gallery action.
 const _uploadLabel = 'Upload a Photo';
 
@@ -68,7 +82,9 @@ class CameraScreen extends StatefulWidget {
     required this.onScan,
     required this.onHistory,
     this.onAbout,
+    this.liveClassifier,
     this.pickFromGallery = pickImageFromGallery,
+    this.cropUpload = autoCropToSubject,
     super.key,
   });
 
@@ -80,8 +96,16 @@ class CameraScreen extends StatefulWidget {
   /// Opens the About page when the logo is tapped.
   final VoidCallback? onAbout;
 
+  /// Runs the banana model on the reticle area of live frames, so the hint
+  /// and the blue corners agree with what a scan will say. `null` (demo mode,
+  /// tests) keeps the colour-only hint.
+  final LiveFrameClassifier? liveClassifier;
+
   /// Injectable so widget tests can fake the platform gallery.
   final GalleryPicker pickFromGallery;
+
+  /// Injectable so widget tests can skip the automatic crop.
+  final UploadCropper cropUpload;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -113,6 +137,18 @@ class _CameraScreenState extends State<CameraScreen>
   // ─────────────────────── live hints & flash ──────────────────────────
   /// How often a preview frame is measured for the on-screen hint.
   static const _frameInterval = Duration(milliseconds: 300);
+
+  /// Sets how often a preview frame is sent to the model, from how fast this
+  /// phone runs it. One frame at a time: a new one is only sent once the
+  /// last has come back.
+  final _pacer = LiveCheckPacer();
+
+  DateTime _lastModelAt = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _liveInFlight = false;
+
+  /// Whether this screen is the visible route. No frames go to the model
+  /// while History, Analyzing or Results sit on top of it.
+  bool _isTopRoute = true;
 
   final _conditionTracker = ScanConditionTracker();
   ScanCondition _condition = ScanCondition.searching;
@@ -394,6 +430,12 @@ class _CameraScreenState extends State<CameraScreen>
 
   Future<void> _startFrameAnalysis(CameraController controller) async {
     if (controller.value.isStreamingImages) return;
+    // A fresh stream starts with no hint history: an old "banana found"
+    // must not carry over from before a capture.
+    _conditionTracker.reset();
+    if (mounted && _condition != ScanCondition.searching) {
+      setState(() => _condition = ScanCondition.searching);
+    }
     try {
       await controller.startImageStream(_onFrame);
     } catch (_) {
@@ -413,6 +455,15 @@ class _CameraScreenState extends State<CameraScreen>
 
   void _onFrame(CameraImage image) {
     final now = DateTime.now();
+
+    // While the model is working, only it may say "banana found". If live
+    // classification has given up, the colour check takes over.
+    _conditionTracker.modelOnly = widget.liveClassifier?.isAvailable ?? false;
+
+    if (now.difference(_lastModelAt) >= _pacer.interval) {
+      _classifyLiveFrame(image, now);
+    }
+
     if (now.difference(_lastFrameAt) < _frameInterval) return;
     _lastFrameAt = now;
 
@@ -424,39 +475,132 @@ class _CameraScreenState extends State<CameraScreen>
 
   /// Reads brightness and banana-colour coverage from a YUV preview frame.
   FrameStats? _statsFor(CameraImage image) {
+    final p = _planesOf(image);
+    if (p == null) return null;
+    try {
+      return analyzeYuvFrame(
+        width: image.width,
+        height: image.height,
+        y: p.y,
+        yRowStride: p.yRowStride,
+        u: p.u,
+        v: p.v,
+        uvRowStride: p.uvRowStride,
+        uvPixelStride: p.uvPixelStride,
+        vOffset: p.vOffset,
+      );
+    } on RangeError {
+      // Unexpected plane padding — skip this frame.
+      return null;
+    }
+  }
+
+  /// Sends the reticle area of [image] to [CameraScreen.liveClassifier].
+  ///
+  /// The region is cut out here, synchronously, because the camera may reuse
+  /// the frame's buffers once this callback returns. Only the model run is
+  /// asynchronous, and it happens off the UI thread.
+  void _classifyLiveFrame(CameraImage image, DateTime now) {
+    final classifier = widget.liveClassifier;
+    final controller = _cameraController;
+    if (classifier == null ||
+        controller == null ||
+        _liveInFlight ||
+        !_isTopRoute ||
+        !mounted) {
+      return;
+    }
+
+    final box = _previewKey.currentContext?.size;
+    final p = _planesOf(image);
+    if (box == null || p == null) return;
+
+    // Android streams frames in the sensor's landscape orientation while the
+    // preview box is portrait; turn them upright the way the preview does.
+    // iOS already streams upright frames.
+    final rotation = image.width > image.height && box.height > box.width
+        ? controller.description.sensorOrientation % 360
+        : 0;
+    final quarterTurn = rotation == 90 || rotation == 270;
+
+    // The same mapping a capture uses, so both look at the same pixels.
+    final crop = imageCropForReticle(
+      previewSize: box,
+      reticle: ScanOverlay.frameFor(box),
+      imageWidth: quarterTurn ? image.height : image.width,
+      imageHeight: quarterTurn ? image.width : image.height,
+    );
+    if (crop == null) return;
+
+    final region = yuvRegionToRgb(
+      width: image.width,
+      height: image.height,
+      y: p.y,
+      yRowStride: p.yRowStride,
+      u: p.u,
+      v: p.v,
+      uvRowStride: p.uvRowStride,
+      uvPixelStride: p.uvPixelStride,
+      vOffset: p.vOffset,
+      rotation: rotation,
+      uprightCrop: crop,
+    );
+    if (region == null) return;
+
+    _lastModelAt = now;
+    _liveInFlight = true;
+    final started = DateTime.now();
+    classifier.classifyFrame(region).then((result) {
+      if (result == null) return;
+      // Pace the next frames by how long this phone took, and keep each
+      // verdict valid long enough to span the gap until the next one.
+      _pacer.record(DateTime.now().difference(started));
+      _conditionTracker.modelStaleAfter = _pacer.staleAfter;
+
+      // Drop late answers for a camera that has since closed or restarted.
+      if (!mounted || _cameraController != controller) return;
+      final condition = _conditionTracker.reportModel(result);
+      if (condition != _condition) setState(() => _condition = condition);
+    }).whenComplete(() => _liveInFlight = false);
+  }
+
+  /// The YUV planes of [image] in the layout [analyzeYuvFrame] and
+  /// [yuvRegionToRgb] expect, or `null` for an unexpected format.
+  ({
+    Uint8List y,
+    int yRowStride,
+    Uint8List u,
+    Uint8List v,
+    int uvRowStride,
+    int uvPixelStride,
+    int vOffset,
+  })? _planesOf(CameraImage image) {
     if (image.format.group != ImageFormatGroup.yuv420) return null;
     final planes = image.planes;
 
-    try {
-      if (planes.length >= 3) {
-        // Android: separate Y, U and V planes (U/V may be interleaved).
-        return analyzeYuvFrame(
-          width: image.width,
-          height: image.height,
-          y: planes[0].bytes,
-          yRowStride: planes[0].bytesPerRow,
-          u: planes[1].bytes,
-          v: planes[2].bytes,
-          uvRowStride: planes[1].bytesPerRow,
-          uvPixelStride: planes[1].bytesPerPixel ?? 1,
-        );
-      }
-      if (planes.length == 2) {
-        // iOS NV12: Y plane, then one interleaved CbCr plane.
-        return analyzeYuvFrame(
-          width: image.width,
-          height: image.height,
-          y: planes[0].bytes,
-          yRowStride: planes[0].bytesPerRow,
-          u: planes[1].bytes,
-          v: planes[1].bytes,
-          uvRowStride: planes[1].bytesPerRow,
-          uvPixelStride: 2,
-          vOffset: 1,
-        );
-      }
-    } on RangeError {
-      // Unexpected plane padding — skip this frame.
+    if (planes.length >= 3) {
+      // Android: separate Y, U and V planes (U/V may be interleaved).
+      return (
+        y: planes[0].bytes,
+        yRowStride: planes[0].bytesPerRow,
+        u: planes[1].bytes,
+        v: planes[2].bytes,
+        uvRowStride: planes[1].bytesPerRow,
+        uvPixelStride: planes[1].bytesPerPixel ?? 1,
+        vOffset: 0,
+      );
+    }
+    if (planes.length == 2) {
+      // iOS NV12: Y plane, then one interleaved CbCr plane.
+      return (
+        y: planes[0].bytes,
+        yRowStride: planes[0].bytesPerRow,
+        u: planes[1].bytes,
+        v: planes[1].bytes,
+        uvRowStride: planes[1].bytesPerRow,
+        uvPixelStride: 2,
+        vOffset: 1,
+      );
     }
     return null;
   }
@@ -486,7 +630,16 @@ class _CameraScreenState extends State<CameraScreen>
       }
 
       if (!mounted) return;
-      widget.onScan(file);
+
+      // Frame it the way the reticle frames a capture, so both paths hand
+      // the model a square with the banana filling it. A null result means
+      // the photo could not be read or written at all; scanning it as picked
+      // is a worse scan, never a broken one, and matches the camera path's
+      // fallback when reticle cropping fails.
+      final scanFile = await widget.cropUpload(file) ?? file;
+      if (!mounted) return;
+
+      widget.onScan(scanFile);
     } catch (_) {
       if (!mounted) return;
       _showMessage('Could not open that photo. Please try another one.');
@@ -514,6 +667,9 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Rebuilt whenever this route is covered or uncovered.
+    _isTopRoute = ModalRoute.of(context)?.isCurrent ?? true;
+
     final cameraReady = _permissionState == CameraPermissionState.granted &&
         _cameraController != null &&
         _cameraController!.value.isInitialized;

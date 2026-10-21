@@ -13,6 +13,7 @@ void main() {
     VoidCallback? onSecondary,
   }) {
     return MaterialApp(
+      theme: ThemeData(splashFactory: InkRipple.splashFactory),
       home: Scaffold(
         body: ErrorView(
           exception: exception,

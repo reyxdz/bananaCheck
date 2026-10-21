@@ -8,6 +8,7 @@ import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -365,7 +366,10 @@ void main() {
       (tester) async {
     final dir = Directory.systemTemp.createTempSync('upload_e2e');
     addTearDown(() => dir.deleteSync(recursive: true));
-    final photo = File('${dir.path}/banana.jpg')..writeAsBytesSync([0, 0]);
+    // A real JPEG: the upload path decodes the photo to crop it, so a
+    // two-byte stub would fall straight through to the uncropped fallback.
+    final photo = File('${dir.path}/banana.jpg')
+      ..writeAsBytesSync(img.encodeJpg(img.Image(width: 64, height: 48)));
 
     // The real default picker, backed by a stubbed image_picker channel.
     const pickerChannel = MethodChannel('plugins.flutter.io/image_picker');
@@ -383,17 +387,27 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // One tap, no framing step: cropping happens automatically, so an upload
+    // goes straight to the result exactly like a capture (§7.1, §7.8).
     await tester.tap(find.text('Upload a Photo'));
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 50)),
-    );
+
+    // Decoding, cropping and writing the JPEG is real file I/O, so the work
+    // only advances inside runAsync. Pump until the result appears rather
+    // than guessing how many frames that takes.
+    for (var i = 0; i < 40; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+      if (find.text('Saba').evaluate().isNotEmpty) break;
+    }
     await tester.pumpAndSettle();
 
     expect(find.text('Saba'), findsOneWidget);
 
     expect(find.text('Ripe'), findsWidgets);
     final records = await storage.getRecords();
-    expect(records.single.imagePath, photo.path);
+    expect(records.single.imagePath, '${photo.path}.auto.jpg');
 
     await tester.tap(find.text('Scan Again'));
     await tester.pumpAndSettle();

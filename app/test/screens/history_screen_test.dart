@@ -70,6 +70,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: HistoryScreen(storageService: FakeStorageService()),
         ),
       );
@@ -81,6 +82,7 @@ void main() {
     testWidgets('shows "Scan a Banana Now" CTA in empty state', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: HistoryScreen(storageService: FakeStorageService()),
         ),
       );
@@ -93,6 +95,7 @@ void main() {
     testWidgets('shows helpful message in empty state', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: HistoryScreen(storageService: FakeStorageService()),
         ),
       );
@@ -107,6 +110,7 @@ void main() {
     testWidgets('hides "Clear All" button when empty', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: HistoryScreen(storageService: FakeStorageService()),
         ),
       );
@@ -118,8 +122,9 @@ void main() {
     testWidgets('shows "No Saved Scans Yet" when storageService is null',
         (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: HistoryScreen(storageService: null),
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: const HistoryScreen(storageService: null),
         ),
       );
       await tester.pumpAndSettle();
@@ -132,6 +137,7 @@ void main() {
     testWidgets('shows "Scan History" in app bar', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: HistoryScreen(storageService: FakeStorageService()),
         ),
       );
@@ -161,7 +167,9 @@ void main() {
       ));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -176,7 +184,9 @@ void main() {
       await storage.saveRecord(_makeRecord(ripeness: 'Ripe'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -190,7 +200,9 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -201,7 +213,9 @@ void main() {
       await storage.saveRecord(_makeRecord());
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -212,7 +226,9 @@ void main() {
       await storage.saveRecord(_makeRecord());
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -226,7 +242,9 @@ void main() {
       await storage.saveRecord(_makeRecord(id: '1', variety: 'Saba'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -248,7 +266,9 @@ void main() {
       await storage.saveRecord(_makeRecord());
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -266,7 +286,9 @@ void main() {
       await storage.saveRecord(_makeRecord(variety: 'Saba'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -287,7 +309,9 @@ void main() {
       await storage.saveRecord(_makeRecord(id: '2', variety: 'Lakatan'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -307,7 +331,9 @@ void main() {
       final storage = FakeStorageService()..shouldThrow = true;
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -319,7 +345,9 @@ void main() {
       final storage = FakeStorageService()..shouldThrow = true;
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -339,6 +367,7 @@ void main() {
     testWidgets('no jargon in empty state', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: HistoryScreen(storageService: FakeStorageService()),
         ),
       );
@@ -354,7 +383,9 @@ void main() {
       await storage.saveRecord(_makeRecord(ripeness: 'Ripe'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -367,7 +398,9 @@ void main() {
       await storage.saveRecord(_makeRecord(ripeness: 'Unripe'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 
@@ -379,7 +412,9 @@ void main() {
       await storage.saveRecord(_makeRecord(ripeness: 'Overripe'));
 
       await tester.pumpWidget(
-        MaterialApp(home: HistoryScreen(storageService: storage)),
+        MaterialApp(
+            theme: ThemeData(splashFactory: InkRipple.splashFactory),
+            home: HistoryScreen(storageService: storage)),
       );
       await tester.pumpAndSettle();
 

@@ -18,6 +18,10 @@ import 'package:banana_classifier/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
+
+import 'package:banana_classifier/models/classification_result.dart';
+import 'package:banana_classifier/services/inference_service.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 //  Test helpers — duplicated from widget_test.dart because Dart test
@@ -306,6 +310,7 @@ void main() {
       var opened = 0;
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: CameraScreen(
             onScan: (_) {},
             onHistory: () {},
@@ -319,6 +324,33 @@ void main() {
       await tester.tap(find.text('Bananalyze'));
       expect(opened, 1);
       expect(find.bySemanticsLabel('About Bananalyze'), findsOneWidget);
+    });
+  });
+
+  group('CameraScreen — live banana check', () {
+    testWidgets(
+        'accepts a live classifier and leaves the hint alone '
+        'until frames arrive', (tester) async {
+      stubPermissionHandler(cameraStatus: 0);
+      final classifier = _FakeLiveClassifier();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
+          home: CameraScreen(
+            onScan: (_) {},
+            onHistory: () {},
+            liveClassifier: classifier,
+            pickFromGallery: () async => null,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // No camera stream in a widget test, so nothing is classified, and the
+      // screen behaves exactly as without a classifier.
+      expect(classifier.calls, 0);
+      expect(find.text('Upload a Photo'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 
@@ -338,19 +370,26 @@ void main() {
 
     /// Pumps [CameraScreen] on its own with a fake gallery. Defaults to
     /// camera permission denied, since that is where Upload a Photo lives.
+    /// Skips the automatic crop so these tests stay about picker validation.
+    /// Framing has its own group below.
+    Future<File?> passThroughCrop(File photo) async => photo;
+
     Future<List<File>> pumpScreen(
       WidgetTester tester, {
       required GalleryPicker picker,
       int cameraStatus = 0,
+      UploadCropper? cropUpload,
     }) async {
       stubPermissionHandler(cameraStatus: cameraStatus);
       final scanned = <File>[];
       await tester.pumpWidget(
         MaterialApp(
+          theme: ThemeData(splashFactory: InkRipple.splashFactory),
           home: CameraScreen(
             onScan: scanned.add,
             onHistory: () {},
             pickFromGallery: picker,
+            cropUpload: cropUpload ?? passThroughCrop,
           ),
         ),
       );
@@ -520,6 +559,66 @@ void main() {
 
       expect(scanned, [photo]);
       expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('an upload is framed before it is scanned', (tester) async {
+      // Captures are cropped to the reticle; uploads get the same treatment
+      // or a banana sitting small in a wide photo reads as NotBanana.
+      final photo = tempImage('banana.jpg');
+      final framed = tempImage('banana.jpg.crop.jpg');
+      final offered = <File>[];
+
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cropUpload: (picked) async {
+          offered.add(picked);
+          return framed;
+        },
+      );
+
+      await tapUpload(tester);
+
+      expect(offered, [photo], reason: 'the picked photo goes to framing');
+      expect(scanned, [framed], reason: 'the framed crop is what gets scanned');
+    });
+
+    testWidgets('a photo that cannot be framed is still scanned as picked',
+        (tester) async {
+      // Framing returns null only when the photo cannot be read or the crop
+      // cannot be written. Scanning it uncropped is a worse scan, never a
+      // broken one, and matches what the camera path does when reticle
+      // cropping fails — the user is never left with a dead end (§7.3).
+      final photo = tempImage('banana.jpg');
+
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cropUpload: (_) async => null,
+      );
+
+      await tapUpload(tester);
+
+      expect(scanned, [photo]);
+      expect(find.byType(SnackBar), findsNothing,
+          reason: 'a fallback is not an error');
+    });
+
+    testWidgets('Upload a Photo is tappable again after a framing fallback',
+        (tester) async {
+      final photo = tempImage('banana.jpg');
+
+      final scanned = await pumpScreen(
+        tester,
+        picker: () async => photo,
+        cropUpload: (_) async => null,
+      );
+
+      await tapUpload(tester);
+      await tapUpload(tester);
+
+      expect(scanned, [photo, photo], reason: 'both uploads reach the scan');
+      expect(find.text('Upload a Photo'), findsOneWidget);
     });
 
     testWidgets('accepts PNG regardless of extension case', (tester) async {
@@ -695,4 +794,17 @@ void main() {
       expect(await pickImageFromGallery(), isNull);
     });
   });
+}
+
+class _FakeLiveClassifier implements LiveFrameClassifier {
+  int calls = 0;
+
+  @override
+  bool get isAvailable => true;
+
+  @override
+  Future<ClassificationResult?> classifyFrame(img.Image region) async {
+    calls++;
+    return null;
+  }
 }

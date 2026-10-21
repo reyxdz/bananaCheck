@@ -1,4 +1,9 @@
 import 'dart:typed_data';
+import 'dart:ui' show Rect;
+
+import 'package:image/image.dart' as img;
+
+import '../models/classification_result.dart';
 
 /// What the live camera view should tell the user right now.
 enum ScanCondition {
@@ -86,6 +91,101 @@ FrameStats analyzeYuvFrame({
   );
 }
 
+/// Cuts [uprightCrop] out of a YUV 4:2:0 camera frame and returns it as an
+/// [outputSize]×[outputSize] RGB image, ready for the classifier.
+///
+/// Camera frames arrive in the sensor's orientation (landscape on Android),
+/// while the preview, the scan reticle and a captured photo are upright.
+/// [rotation] is the clockwise turn (0, 90, 180 or 270) that makes the frame
+/// upright, and [uprightCrop] is given in those upright pixel coordinates,
+/// the same space [imageCropForReticle] works in. That keeps the live check
+/// looking at exactly the region a capture would send to the model.
+///
+/// The crop is stretched to a square, as the classifier's own preprocessing
+/// does with a captured crop. Plane arguments match [analyzeYuvFrame].
+///
+/// Returns `null` for an unsupported rotation, a crop that misses the frame,
+/// or planes smaller than their strides claim.
+img.Image? yuvRegionToRgb({
+  required int width,
+  required int height,
+  required Uint8List y,
+  required int yRowStride,
+  required Uint8List u,
+  required Uint8List v,
+  required int uvRowStride,
+  required int uvPixelStride,
+  required int rotation,
+  required Rect uprightCrop,
+  int uOffset = 0,
+  int vOffset = 0,
+  int outputSize = 224,
+}) {
+  if (width <= 0 || height <= 0 || outputSize <= 0) return null;
+  if (rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270) {
+    return null;
+  }
+
+  final quarterTurn = rotation == 90 || rotation == 270;
+  final uprightWidth = quarterTurn ? height : width;
+  final uprightHeight = quarterTurn ? width : height;
+
+  final crop = uprightCrop.intersect(
+    Rect.fromLTWH(0, 0, uprightWidth.toDouble(), uprightHeight.toDouble()),
+  );
+  if (crop.width < 1 || crop.height < 1) return null;
+
+  final out = img.Image(width: outputSize, height: outputSize);
+  final stepX = crop.width / outputSize;
+  final stepY = crop.height / outputSize;
+
+  try {
+    for (var oy = 0; oy < outputSize; oy++) {
+      final uy =
+          (crop.top + (oy + 0.5) * stepY).floor().clamp(0, uprightHeight - 1);
+      for (var ox = 0; ox < outputSize; ox++) {
+        final ux =
+            (crop.left + (ox + 0.5) * stepX).floor().clamp(0, uprightWidth - 1);
+
+        // Upright pixel -> sensor pixel.
+        final int sx;
+        final int sy;
+        switch (rotation) {
+          case 90:
+            sx = uy;
+            sy = height - 1 - ux;
+          case 180:
+            sx = width - 1 - ux;
+            sy = height - 1 - uy;
+          case 270:
+            sx = width - 1 - uy;
+            sy = ux;
+          default:
+            sx = ux;
+            sy = uy;
+        }
+
+        final luma = y[sy * yRowStride + sx];
+        final uvIndex = (sy ~/ 2) * uvRowStride + (sx ~/ 2) * uvPixelStride;
+        final cb = u[uvIndex + uOffset] - 128;
+        final cr = v[uvIndex + vOffset] - 128;
+
+        // BT.601 full range, as JPEG/JFIF (and so a captured photo) uses.
+        out.setPixelRgb(
+          ox,
+          oy,
+          (luma + 1.402 * cr).round().clamp(0, 255),
+          (luma - 0.344136 * cb - 0.714136 * cr).round().clamp(0, 255),
+          (luma + 1.772 * cb).round().clamp(0, 255),
+        );
+      }
+    }
+  } on RangeError {
+    return null;
+  }
+  return out;
+}
+
 /// Whether one YCbCr pixel looks like banana peel.
 ///
 /// Yellow (Cb ≈ 50), green (Cb ≈ 80) and brown (Cb ≈ 95) peels all sit well
@@ -124,21 +224,83 @@ class ScanConditionTracker {
 
   ScanCondition get condition => _condition;
 
+  /// Consecutive model misses needed before a seen banana counts as gone.
+  /// One stray miss (motion blur, a hand passing) won't flicker the hint.
+  static const modelMissesToClear = 2;
+
+  /// Default for [modelStaleAfter].
+  static const defaultModelStaleAfter = Duration(seconds: 2);
+
+  /// A model verdict older than this no longer counts. The camera widens it
+  /// on slow phones, where verdicts arrive further apart (see
+  /// [LiveCheckPacer.staleAfter]).
+  Duration modelStaleAfter = defaultModelStaleAfter;
+
+  /// When `true`, only the model can say a banana is in view: with no fresh
+  /// verdict the hint keeps searching instead of guessing from colour. The
+  /// camera turns this on while a live classifier is working, so the blue
+  /// corners always mean the same thing a scan would say.
+  ///
+  /// When `false` (demo mode, or live classification has given up), a fresh
+  /// verdict is still used if there is one, and the colour check fills in.
+  bool modelOnly = false;
+
+  /// Latest model verdict on the reticle region: `true` once it has seen a
+  /// confident banana, `false` after [modelMissesToClear] misses. `null`
+  /// until the model has reported at all.
+  bool? _modelSeesBanana;
+  int _modelMisses = 0;
+  DateTime? _modelAt;
+
   /// Feeds one frame's stats in. [at] is the frame time (defaults to now;
   /// tests pass it explicitly).
   ScanCondition update(FrameStats stats, {DateTime? at}) {
-    final now = at ?? DateTime.now();
     _brightness = _blend(_brightness, stats.brightness);
     _coverage = _blend(_coverage, stats.bananaCoverage);
+    return _evaluate(at ?? DateTime.now());
+  }
 
+  /// Feeds in the classifier's verdict on the reticle region. While a recent
+  /// verdict exists it decides whether a banana is in view, using the same
+  /// rule the Analyzing screen accepts a scan on
+  /// ([ClassificationResult.isConfidentBanana]).
+  ScanCondition reportModel(ClassificationResult result, {DateTime? at}) {
+    final now = at ?? DateTime.now();
+    if (result.isConfidentBanana) {
+      _modelSeesBanana = true;
+      _modelMisses = 0;
+    } else {
+      _modelMisses++;
+      if (_modelSeesBanana != true || _modelMisses >= modelMissesToClear) {
+        _modelSeesBanana = false;
+      }
+    }
+    _modelAt = now;
+    // No brightness yet means no frame stats yet: nothing to re-judge.
+    return _brightness == null ? _condition : _evaluate(now);
+  }
+
+  ScanCondition _evaluate(DateTime now) {
     final wasDark = _condition == ScanCondition.tooDark;
     final dark = wasDark ? _brightness! < darkExit : _brightness! < darkEnter;
+
+    final modelFresh =
+        _modelAt != null && now.difference(_modelAt!) < modelStaleAfter;
+    final bool bananaInView;
+    if (modelFresh && _modelSeesBanana != null) {
+      bananaInView = _modelSeesBanana!;
+    } else if (modelOnly) {
+      // No fresh verdict: say nothing rather than guess.
+      bananaInView = false;
+    } else {
+      bananaInView = (_coverage ?? 0) >= readyCoverage;
+    }
 
     if (dark) {
       // Poor light is the real problem — fix that first, restart the clock.
       _searchingSince = null;
       _condition = ScanCondition.tooDark;
-    } else if (_coverage! >= readyCoverage) {
+    } else if (bananaInView) {
       _searchingSince = null;
       _condition = ScanCondition.ready;
     } else {
@@ -155,8 +317,60 @@ class ScanConditionTracker {
     _coverage = null;
     _searchingSince = null;
     _condition = ScanCondition.searching;
+    _modelSeesBanana = null;
+    _modelMisses = 0;
+    _modelAt = null;
   }
 
   static double _blend(double? previous, double next) =>
       previous == null ? next : previous + smoothing * (next - previous);
+}
+
+/// Sets how often live frames go to the model, so slow phones stay smooth.
+///
+/// Each run is timed. The next frame is sent no sooner than twice the
+/// (smoothed) run time after the last one started, which leaves the phone at
+/// least as much free time as the model takes. Fast phones check about twice
+/// a second; slow ones back off to as little as once every two seconds.
+class LiveCheckPacer {
+  /// Fastest pace, for phones that run the model quickly.
+  static const minInterval = Duration(milliseconds: 500);
+
+  /// Slowest pace. Slower than this and the hint would feel stuck.
+  static const maxInterval = Duration(seconds: 2);
+
+  /// Weight of the newest run time in the running average.
+  static const smoothing = 0.3;
+
+  double? _averageMs;
+
+  /// Time to wait from the start of one model run to the start of the next.
+  Duration get interval {
+    final average = _averageMs;
+    if (average == null) return minInterval;
+    final ms = (average * 2).round().clamp(
+          minInterval.inMilliseconds,
+          maxInterval.inMilliseconds,
+        );
+    return Duration(milliseconds: ms);
+  }
+
+  /// How long a verdict stays valid: long enough to span three runs, so one
+  /// slow or skipped frame never blanks the hint. Never under the tracker's
+  /// default.
+  Duration get staleAfter {
+    final threeRuns = interval * 3;
+    return threeRuns > ScanConditionTracker.defaultModelStaleAfter
+        ? threeRuns
+        : ScanConditionTracker.defaultModelStaleAfter;
+  }
+
+  /// Records how long one model run took.
+  void record(Duration took) {
+    final ms = took.inMicroseconds / 1000;
+    final average = _averageMs;
+    _averageMs = average == null ? ms : average + smoothing * (ms - average);
+  }
+
+  void reset() => _averageMs = null;
 }

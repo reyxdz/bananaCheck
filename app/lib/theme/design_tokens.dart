@@ -101,8 +101,13 @@ abstract final class DesignTokens {
   static const double imageThumbnailSize = 200;
   static const double logoTiny = 28;
   static const double historyThumbnailSize = 64;
-  static const double resultHeroHeight = 240;
+
+  /// The result photo keeps its own shape (never cropped). Min is the
+  /// placeholder height before it loads; max caps a tall portrait photo.
+  static const double resultHeroMinHeight = 200;
+  static const double resultHeroMaxHeight = 480;
   static const double analyzingPhotoSize = 220;
+  static const double analyzingPhotoMaxHeight = 300;
   static const double errorIconCircle = 80;
   static const double mascotSize = 180;
 
