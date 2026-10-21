@@ -28,8 +28,8 @@ from PIL import Image
 
 from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.train import (
-    TrainingConfig,
     BASE_MODEL_NAME,
+    TrainingConfig,
     build_arg_parser,
     build_model,
     load_datasets,
