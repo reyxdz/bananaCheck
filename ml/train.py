@@ -421,8 +421,12 @@ def train(
 # ---------------------------------------------------------------------------
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """CLI entry-point for ``python -m ml.train``."""
+def build_arg_parser() -> argparse.ArgumentParser:
+    """Command-line interface for ``python -m ml.train``.
+
+    Split out from :func:`main` so the flags can be tested without
+    running a training job.
+    """
     parser = argparse.ArgumentParser(
         description="Train the banana classifier (MobileNetV2 transfer learning).",
     )
@@ -480,7 +484,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=float,
         help="Dropout rate before the classification head (default: 0.2).",
     )
+    parser.add_argument(
+        "--no-lighting-augmentation",
+        action="store_true",
+        help=(
+            "Train without random brightness and contrast. The bundled "
+            "98.48%% model was built this way, before the augmentation "
+            "existed; pass this to reproduce it."
+        ),
+    )
+    return parser
 
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """CLI entry-point for ``python -m ml.train``."""
+    parser = build_arg_parser()
     args = parser.parse_args(argv)
 
     config = TrainingConfig(
@@ -499,6 +517,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         image_width=config.image_width,
         image_height=config.image_height,
         dropout_rate=config.dropout_rate,
+        augment_lighting=not args.no_lighting_augmentation,
     )
 
     history = train(model, config)

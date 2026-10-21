@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
 import 'banana_detect.dart';
@@ -52,19 +51,10 @@ Future<File?> autoCropToSubject(File photo) async {
 
     final target = File('${photo.path}.auto.jpg');
     await target.writeAsBytes(img.encodeJpg(cropped, quality: 95));
-
-    if (kDebugMode) {
-      debugPrint('\u{2702} auto-crop: ${decoded.width}x${decoded.height} '
-          '-> ${cropped.width}x${cropped.height} at '
-          '(${box.left.round()},${box.top.round()}) '
-          '${subject == null ? "[centred, no subject]" : "[on subject]"}');
-    }
-
     return target;
-  } catch (e) {
-    // Any failure means the manual screen, which is the behaviour this
-    // replaces — never a scan of something we could not frame.
-    if (kDebugMode) debugPrint('\u{2702} auto-crop: failed ($e) -> manual');
+  } catch (_) {
+    // Unreadable or unwritable: the caller scans the photo as picked, which
+    // is a worse scan but never a broken one.
     return null;
   }
 }

@@ -30,6 +30,7 @@ from ml.classes import ALL_CLASSES, NUM_CLASSES
 from ml.train import (
     TrainingConfig,
     BASE_MODEL_NAME,
+    build_arg_parser,
     build_model,
     load_datasets,
     main,
@@ -214,6 +215,20 @@ class TestBuildModel:
         # Dropout is off, so any difference comes from the lighting layers.
         outputs = {tuple(model(image, training=True).numpy().ravel()) for _ in range(8)}
         assert len(outputs) > 1
+
+    def test_cli_flag_can_turn_lighting_augmentation_off(self) -> None:
+        """The bundled model predates the augmentation, so it must be
+        reproducible: without a way to switch the layers off from the command
+        line, retraining silently yields a different model than the one the
+        app ships."""
+        parser = build_arg_parser()
+        args = parser.parse_args(
+            ["--data-dir", "d", "--output-dir", "o", "--no-lighting-augmentation"]
+        )
+        assert args.no_lighting_augmentation is True
+
+        default = parser.parse_args(["--data-dir", "d", "--output-dir", "o"])
+        assert default.no_lighting_augmentation is False
 
     def test_rejects_fewer_than_two_classes(self) -> None:
         with pytest.raises(ValueError, match="at least 2"):
