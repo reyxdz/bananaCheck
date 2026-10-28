@@ -4,6 +4,7 @@ import '../models/classification_result.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/result_card.dart';
+import '../widgets/responsive_constraints.dart';
 import '../widgets/screen_header.dart';
 
 /// Displays the classification result after a scan.
@@ -52,26 +53,28 @@ class ResultsScreen extends StatelessWidget {
                   DesignTokens.spacingMedium,
                   DesignTokens.spacingLarge,
                 ),
-                child: Column(
-                  children: [
-                    // Image + headline + confidence + advice + info.
-                    ResultCard(result: result, imagePath: imagePath),
+                child: ContentWidthBox(
+                  child: Column(
+                    children: [
+                      // Image + headline + confidence + advice + info.
+                      ResultCard(result: result, imagePath: imagePath),
 
-                    const SizedBox(height: DesignTokens.spacingLarge),
+                      const SizedBox(height: DesignTokens.spacingLarge),
 
-                    // ── Helpful context line ──
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: DesignTokens.spacingMedium,
+                      // ── Helpful context line ──
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: DesignTokens.spacingMedium,
+                        ),
+                        child: Text(
+                          'Point at a different banana and scan again '
+                          'if you want to check another one.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ),
-                      child: Text(
-                        'Point at a different banana and scan again '
-                        'if you want to check another one.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -94,13 +97,15 @@ class ResultsScreen extends StatelessWidget {
                   DesignTokens.spacingMedium,
                   DesignTokens.spacingMedium,
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: DesignTokens.primaryActionSize,
-                  child: PrimaryButton(
-                    icon: Icons.camera_alt_rounded,
-                    label: 'Scan Again',
-                    onPressed: onScanAgain,
+                child: ContentWidthBox(
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: DesignTokens.primaryActionSize,
+                    child: PrimaryButton(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Scan Again',
+                      onPressed: onScanAgain,
+                    ),
                   ),
                 ),
               ),
