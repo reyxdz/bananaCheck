@@ -6,36 +6,37 @@ _Generated for the project paper (B17) from the evaluation (B9) and tuning (B10)
 
 | Metric | Value |
 |---|---|
-| Overall accuracy | 0.9704 |
-| Test samples | 540 |
-| Classes | 18 |
-| Macro avg F1 | 0.9701 |
-| Weighted avg F1 | 0.9701 |
+| Overall accuracy | 0.9662 |
+| Test samples | 591 |
+| Classes | 19 |
+| Macro avg F1 | 0.9606 |
+| Weighted avg F1 | 0.9661 |
 
 ## Per-class metrics
 
 | Class | Precision | Recall | F1-score | Support |
 |---|---|---|---|---|
-| Cavendish_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Cavendish_Ripe | 0.9677 | 1.0000 | 0.9836 | 30 |
-| Cavendish_Unripe | 0.8929 | 0.8333 | 0.8621 | 30 |
+| Cavendish_Overripe | 1.0000 | 0.9259 | 0.9615 | 27 |
+| Cavendish_Ripe | 0.9667 | 1.0000 | 0.9831 | 29 |
+| Cavendish_Unripe | 1.0000 | 0.9688 | 0.9841 | 32 |
 | Cordova_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Cordova_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Cordova_Unripe | 0.9677 | 1.0000 | 0.9836 | 30 |
+| Cordova_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Lakatan_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Lakatan_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
+| Lakatan_Ripe | 0.9677 | 1.0000 | 0.9836 | 30 |
 | Lakatan_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Latundan_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Latundan_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
+| Latundan_Ripe | 1.0000 | 0.9333 | 0.9655 | 30 |
 | Latundan_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Saba_Overripe | 0.8529 | 0.9667 | 0.9062 | 30 |
-| Saba_Ripe | 0.9259 | 0.8333 | 0.8772 | 30 |
-| Saba_Unripe | 0.8667 | 0.8667 | 0.8667 | 30 |
-| Senorita_Overripe | 1.0000 | 0.9667 | 0.9831 | 30 |
+| NotBanana | 0.9683 | 1.0000 | 0.9839 | 61 |
+| Saba_Overripe | 0.6500 | 0.5909 | 0.6190 | 22 |
+| Saba_Ripe | 0.7429 | 0.8387 | 0.7879 | 31 |
+| Saba_Unripe | 1.0000 | 1.0000 | 1.0000 | 29 |
+| Senorita_Overripe | 1.0000 | 1.0000 | 1.0000 | 30 |
 | Senorita_Ripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| Senorita_Unripe | 1.0000 | 1.0000 | 1.0000 | 30 |
-| **Macro average** | 0.9708 | 0.9704 | 0.9701 | 540 |
-| **Weighted average** | 0.9708 | 0.9704 | 0.9701 | 540 |
+| Senorita_Unripe | 1.0000 | 0.9667 | 0.9831 | 30 |
+| **Macro average** | 0.9629 | 0.9592 | 0.9606 | 591 |
+| **Weighted average** | 0.9669 | 0.9662 | 0.9661 | 591 |
 
 ## Confusion matrix
 
