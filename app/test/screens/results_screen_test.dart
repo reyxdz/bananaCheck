@@ -1,5 +1,8 @@
 import 'package:banana_classifier/models/classification_result.dart';
 import 'package:banana_classifier/screens/results_screen.dart';
+import 'package:banana_classifier/theme/design_tokens.dart';
+import 'package:banana_classifier/widgets/primary_button.dart';
+import 'package:banana_classifier/widgets/result_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -38,6 +41,26 @@ void main() {
         ),
       );
     }
+
+    testWidgets('content and button are capped and centred on wide screens',
+        (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.physicalSize = const Size(1200, 800);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(buildScreen(result: highConfidenceResult));
+      await tester.pumpAndSettle();
+
+      const maxWidth = DesignTokens.contentMaxWidth;
+      // Bottom button stays capped and centred, not edge-to-edge.
+      final button = find.byType(PrimaryButton);
+      expect(tester.getSize(button).width, lessThanOrEqualTo(maxWidth));
+      final buttonCenter = tester.getCenter(button).dx;
+      expect(buttonCenter, closeTo(600, 1));
+
+      // The result card is capped too.
+      final card = tester.getSize(find.byType(ResultCard));
+      expect(card.width, lessThanOrEqualTo(maxWidth));
+    });
 
     // ── Layout structure (§7.2: card-based, modern, flat) ──
 

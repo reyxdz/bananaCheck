@@ -65,7 +65,7 @@ GEMINI.md
 # Generated ML run artefacts — every one of these is reproduced by
 # `ml/train.py` + `ml/evaluate.py`, and the weights are already excluded
 # above. Keeping them out stops each retrain showing up as a diff.
-ml/output*/
+
 ml/backup/
 
 # Local scratch photos used for manual device testing.

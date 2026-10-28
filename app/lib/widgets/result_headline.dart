@@ -47,27 +47,42 @@ class ResultHeadline extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // ── Variety and ripeness, side by side ──
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _Fact(
-                    icon: Icons.eco_rounded,
-                    iconColor: DesignTokens.primary,
-                    value: variety,
-                    label: 'Variety',
-                  ),
-                ),
-                const SizedBox(width: DesignTokens.spacingMedium),
-                Expanded(
-                  child: _Fact(
-                    icon: RipenessHelpers.iconFor(ripeness),
-                    iconColor: color,
-                    value: ripeness,
-                    label: 'Ripeness',
-                  ),
-                ),
-              ],
+            // On narrow phones they stack so long variety names wrap
+            // naturally; from resultFactsRowMinWidth up they sit side by side.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final varietyFact = _Fact(
+                  icon: Icons.eco_rounded,
+                  iconColor: DesignTokens.primary,
+                  value: variety,
+                  label: 'Variety',
+                );
+                final ripenessFact = _Fact(
+                  icon: RipenessHelpers.iconFor(ripeness),
+                  iconColor: color,
+                  value: ripeness,
+                  label: 'Ripeness',
+                );
+                if (constraints.maxWidth <
+                    DesignTokens.resultFactsRowMinWidth) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      varietyFact,
+                      const SizedBox(height: DesignTokens.spacingMedium),
+                      ripenessFact,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: varietyFact),
+                    const SizedBox(width: DesignTokens.spacingMedium),
+                    Expanded(child: ripenessFact),
+                  ],
+                );
+              },
             ),
             if (summary.isNotEmpty) ...[
               const SizedBox(height: DesignTokens.spacingMedium),

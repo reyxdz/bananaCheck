@@ -177,6 +177,12 @@ abstract final class DesignTokens {
   static const double displayTextSize = 32;
   static const double varietyHeadlineSize = 40;
 
+  /// Widest the results-screen content grows to; centred above this.
+  static const double contentMaxWidth = 480;
+
+  /// Below this width the Variety / Ripeness facts stack vertically.
+  static const double resultFactsRowMinWidth = 360;
+
   /// Side-by-side Variety / Ripeness facts on the results screen.
   static const double resultFactValueSize = titleTextSize;
   static const double resultFactLabelSize = bodyTextSize;

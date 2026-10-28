@@ -29,6 +29,37 @@ double _segmentHeight(WidgetTester tester, String label) {
 }
 
 void main() {
+  testWidgets('facts stack vertically on narrow screens', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(320, 600);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _app(const ResultHeadline(variety: 'Saba Cardaba', ripeness: 'Ripe')),
+    );
+    await tester.pumpAndSettle();
+
+    final varietyPos = tester.getTopLeft(find.text('Variety'));
+    final ripenessPos = tester.getTopLeft(find.text('Ripeness'));
+    // Stacked: ripeness starts below variety, both start at the left edge.
+    expect(ripenessPos.dy, greaterThan(varietyPos.dy));
+    expect(ripenessPos.dx, varietyPos.dx);
+  });
+
+  testWidgets('facts sit side by side on wider screens', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(640, 600);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      _app(const ResultHeadline(variety: 'Lakatan', ripeness: 'Ripe')),
+    );
+    await tester.pumpAndSettle();
+
+    final varietyPos = tester.getTopLeft(find.text('Variety'));
+    final ripenessPos = tester.getTopLeft(find.text('Ripeness'));
+    expect(ripenessPos.dy, varietyPos.dy);
+    expect(ripenessPos.dx, greaterThan(varietyPos.dx));
+  });
+
   testWidgets('variety and ripeness sit side by side with labels',
       (tester) async {
     await tester.pumpWidget(

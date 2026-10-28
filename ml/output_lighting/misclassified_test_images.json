@@ -1,0 +1,98 @@
+[
+  {
+    "file": "ml/data_split/test/Cavendish_Unripe/Cavendish_Unripe_Top_0007_Aug_1126.jpg",
+    "true": "Cavendish_Unripe",
+    "pred": "Cavendish_Ripe",
+    "pred_conf": 0.4999,
+    "true_conf": 0.4216,
+    "margin": 0.0784
+  },
+  {
+    "file": "ml/data_split/test/Latundan_Ripe/IMG20260915153401.jpg",
+    "true": "Latundan_Ripe",
+    "pred": "Lakatan_Ripe",
+    "pred_conf": 0.3927,
+    "true_conf": 0.2845,
+    "margin": 0.1081
+  },
+  {
+    "file": "ml/data_split/test/Latundan_Ripe/IMG20260915160514.jpg",
+    "true": "Latundan_Ripe",
+    "pred": "Cordova_Ripe",
+    "pred_conf": 0.5852,
+    "true_conf": 0.4005,
+    "margin": 0.1846
+  },
+  {
+    "file": "ml/data_split/test/Senorita_Unripe/IMG_20260924_184628.jpg",
+    "true": "Senorita_Unripe",
+    "pred": "Senorita_Ripe",
+    "pred_conf": 0.639,
+    "true_conf": 0.3609,
+    "margin": 0.2781
+  },
+  {
+    "file": "ml/data_split/test/Cavendish_Unripe/Cavendish_Unripe_Top_0007_Aug_1506.jpg",
+    "true": "Cavendish_Unripe",
+    "pred": "Cavendish_Ripe",
+    "pred_conf": 0.6474,
+    "true_conf": 0.3516,
+    "margin": 0.2958
+  },
+  {
+    "file": "ml/data_split/test/Cavendish_Unripe/Cavendish_Unripe_Top_0007.jpg",
+    "true": "Cavendish_Unripe",
+    "pred": "Saba_Overripe",
+    "pred_conf": 0.5381,
+    "true_conf": 0.2396,
+    "margin": 0.2985
+  },
+  {
+    "file": "ml/data_split/test/Saba_Overripe/Saba_Overripe_Bottom_0016.jpg",
+    "true": "Saba_Overripe",
+    "pred": "Cavendish_Overripe",
+    "pred_conf": 0.6912,
+    "true_conf": 0.3073,
+    "margin": 0.3839
+  },
+  {
+    "file": "ml/data_split/test/Senorita_Overripe/aug_0000.jpg",
+    "true": "Senorita_Overripe",
+    "pred": "Senorita_Ripe",
+    "pred_conf": 0.6678,
+    "true_conf": 0.2793,
+    "margin": 0.3885
+  },
+  {
+    "file": "ml/data_split/test/Senorita_Ripe/IMG_20260924_183856.jpg",
+    "true": "Senorita_Ripe",
+    "pred": "Senorita_Unripe",
+    "pred_conf": 0.7086,
+    "true_conf": 0.2229,
+    "margin": 0.4857
+  },
+  {
+    "file": "ml/data_split/test/Cavendish_Unripe/Cavendish_Unripe_Top_0021.jpg",
+    "true": "Cavendish_Unripe",
+    "pred": "Saba_Unripe",
+    "pred_conf": 0.8902,
+    "true_conf": 0.0395,
+    "margin": 0.8251
+  },
+  {
+    "file": "ml/data_split/test/Latundan_Ripe/IMG20260915155808.jpg",
+    "true": "Latundan_Ripe",
+    "pred": "Senorita_Ripe",
+    "pred_conf": 0.9394,
+    "true_conf": 0.0593,
+    "margin": 0.8801
+  },
+  {
+    "file": "ml/data_split/test/Saba_Ripe/Saba_Ripe_Bottom_0025_Aug_1113.jpg",
+    "true": "Saba_Ripe",
+    "pred": "Cavendish_Overripe",
+    "pred_conf": 0.9451,
+    "true_conf": 0.0294,
+    "margin": 0.9157
+  }
+]

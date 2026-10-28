@@ -1,12 +1,12 @@
 {
-  "overall_accuracy": 0.9662,
+  "overall_accuracy": 0.9848,
   "num_samples": 591,
   "per_class": [
     {
       "class": "Cavendish_Overripe",
-      "precision": 1.0,
-      "recall": 0.9259,
-      "f1_score": 0.9615,
+      "precision": 0.9286,
+      "recall": 0.963,
+      "f1_score": 0.9455,
       "support": 27
     },
     {
@@ -18,9 +18,9 @@
     },
     {
       "class": "Cavendish_Unripe",
-      "precision": 1.0,
+      "precision": 0.9688,
       "recall": 0.9688,
-      "f1_score": 0.9841,
+      "f1_score": 0.9688,
       "support": 32
     },
     {
@@ -75,8 +75,8 @@
     {
       "class": "Latundan_Ripe",
       "precision": 1.0,
-      "recall": 0.9333,
-      "f1_score": 0.9655,
+      "recall": 0.9,
+      "f1_score": 0.9474,
       "support": 30
     },
     {
@@ -88,30 +88,30 @@
     },
     {
       "class": "NotBanana",
-      "precision": 0.9683,
+      "precision": 0.9839,
       "recall": 1.0,
-      "f1_score": 0.9839,
+      "f1_score": 0.9919,
       "support": 61
     },
     {
       "class": "Saba_Overripe",
-      "precision": 0.65,
-      "recall": 0.5909,
-      "f1_score": 0.619,
+      "precision": 1.0,
+      "recall": 0.9545,
+      "f1_score": 0.9767,
       "support": 22
     },
     {
       "class": "Saba_Ripe",
-      "precision": 0.7429,
-      "recall": 0.8387,
-      "f1_score": 0.7879,
+      "precision": 1.0,
+      "recall": 0.9677,
+      "f1_score": 0.9836,
       "support": 31
     },
     {
       "class": "Saba_Unripe",
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1_score": 1.0,
+      "precision": 0.9655,
+      "recall": 0.9655,
+      "f1_score": 0.9655,
       "support": 29
     },
     {
@@ -123,22 +123,23 @@
     },
     {
       "class": "Senorita_Ripe",
-      "precision": 1.0,
-      "recall": 1.0,
-      "f1_score": 1.0,
+      "precision": 0.9667,
+      "recall": 0.9667,
+      "f1_score": 0.9667,
       "support": 30
     },
     {
       "class": "Senorita_Unripe",
-      "precision": 1.0,
-      "recall": 0.9667,
-      "f1_score": 0.9831,
+      "precision": 0.9677,
+      "recall": 1.0,
+      "f1_score": 0.9836,
       "support": 30
     }
   ],
   "confusion_matrix": [
     [
-      25,
+      26,
+      1,
       0,
       0,
       0,
@@ -151,7 +152,6 @@
       0,
       0,
       0,
-      2,
       0,
       0,
       0,
@@ -181,7 +181,7 @@
     ],
     [
       0,
-      1,
+      0,
       31,
       0,
       0,
@@ -195,7 +195,7 @@
       0,
       0,
       0,
-      0,
+      1,
       0,
       0,
       0
@@ -358,14 +358,14 @@
       1,
       0,
       0,
-      28,
+      27,
       0,
       1,
       0,
       0,
       0,
       0,
-      0,
+      1,
       0
     ],
     [
@@ -411,6 +411,28 @@
       0
     ],
     [
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      21,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
       0,
       0,
       0,
@@ -424,9 +446,29 @@
       0,
       0,
       0,
-      13,
-      9,
+      30,
       0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      28,
       0,
       0,
       0
@@ -445,14 +487,16 @@
       0,
       0,
       0,
-      5,
-      26,
       0,
       0,
+      0,
+      30,
       0,
       0
     ],
     [
+      0,
+      0,
       0,
       0,
       0,
@@ -469,30 +513,7 @@
       0,
       0,
       29,
-      0,
-      0,
-      0
-    ],
-    [
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      30,
-      0,
-      0
+      1
     ],
     [
       0,
@@ -512,29 +533,8 @@
       0,
       0,
       0,
-      30,
-      0
-    ],
-    [
       0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      1,
-      0,
-      0,
-      0,
-      0,
-      0,
-      29
+      30
     ]
   ]
 }
